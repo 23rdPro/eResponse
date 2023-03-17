@@ -6,7 +6,9 @@ from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-load_dotenv(os.getenv('FILE'))
+from eEvent import env
+
+load_dotenv(env)
 SCOPES = ['https://mail.google.com/']
 AUTH_SECRET = os.getenv('AUTH_SECRET')
 
