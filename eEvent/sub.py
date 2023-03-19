@@ -4,15 +4,16 @@ import datetime
 import os
 import pytz
 import yagmail
+
 from decimal import Decimal
 from dotenv import load_dotenv
 from typing import Optional
 from google.cloud import pubsub_v1
+from googleapiclient.discovery import build
 
-from eEvent import env
-from eEvent.auth import pgClient
+from eEvent import oauth_credentials
 
-load_dotenv(env)
+load_dotenv('../.env')
 
 EMAIL = os.getenv('EMAIL')
 TIMEOUT = os.getenv('TIMEOUT')
@@ -20,23 +21,22 @@ PROJECT_ID = os.getenv('PROJECT_ID')
 SUB_ID = os.getenv('SUB_ID')
 
 
-def sub(
-        eProjectId: str,
-        eSubId: str,
-        timeout: Optional[float] = None
-) -> None:
+def sub(eProjectId: str, eSubId: str, timeout: Optional[float] = None) -> None:
+    service = build('gmail', 'v1', credentials=oauth_credentials)
     subscriber = pubsub_v1.SubscriberClient()
     eSubPath = subscriber.subscription_path(eProjectId, eSubId)
 
-    def eCallBack(
-            eMessage: pubsub_v1.subscriber.message.Message
-    ) -> None:
-        eThreads = pgClient.users().threads().list(
+    def eCallBack(eMessage: pubsub_v1.subscriber.message.Message) -> None:
+        eThreads = service.users().threads().list(
             userId='me').execute().get('threads', [])
+
         file = open("gmail.csv", "w", newline='')
+
         for thread in eThreads:
             # todo if thread['id'] in 'db' skip proc
+
             timestamp = None
+
             if len(thread['messages']) > 1 and \
                     os.path.isfile('gmail.csv'):
                 writer = csv.writer(file)
@@ -51,18 +51,12 @@ def sub(
                         timestamp = prev = message['internalDate']
                         continue
                     if timestamp:
-                        mean = Decimal(
-                            str(round(
-                                ((message['internalDate']-timestamp)
-                                 +
-                                 (message['internalDate'] -
-                                  prev)) / 2, 2))
-                        )
-                        writer.writerow([
-                            message['id'], mean
-                        ])
+                        mean = round(Decimal(((message['internalDate']-timestamp)
+                                              + (message['internalDate']-prev)) / 2), 2)
+                        writer.writerow([message['id'], mean])
                     prev = message['internalDate']
                 writer.writerow(['', ''])
+
         yagmail.SMTP(EMAIL).send(
             to=EMAIL,
             subject=f"eResponse Datasets on "
@@ -71,8 +65,11 @@ def sub(
                      f"{datetime.datetime.now(tz=pytz.UTC)}",
             attachments=file
         )
+
         file.close()
+
         eMessage.ack()
+
     future = subscriber.subscribe(eSubPath, callback=eCallBack)
     print(f"Listening for messages on {eSubPath}..\n")
     try:
@@ -85,4 +82,5 @@ def sub(
 
 if __name__ == '__main__':
     TIMEOUT = TIMEOUT if TIMEOUT else None
+
     sub(PROJECT_ID, SUB_ID, TIMEOUT)
