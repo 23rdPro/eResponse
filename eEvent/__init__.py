@@ -7,8 +7,10 @@ import socket
 import sys
 
 from dotenv import load_dotenv
+from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 from urllib.parse import unquote
 
 load_dotenv('../.env')
@@ -64,36 +66,51 @@ def get_authorization_code(token: str) -> str:
     return params.get("code")
 
 
-def main(secpath: str, scopes: list) -> build:
+def main(secpath: str, scopes: list) -> Credentials:
     """
     gapi client authorization flow for API requests
     :param secpath: secret path to json file
     :param scopes: list of scope address
     :return: google api service-build object
     """
-    # abspath = (pathlib.Path(__file__).parent / seakret).resolve()
-    flow = Flow.from_client_secrets_file(secpath, scopes=scopes)
-    flow.redirect_uri = REDIRECT
-    token = hashlib.shake_256(os.urandom(1024)).hexdigest(8)
-    auth_url, state = flow.authorization_url(
-        access_type="offline",
-        state=token,
-        prompt="consent",
-        include_granted_scopes="true",
-    )
-    print("Paste this URL into your browser: ")
-    print(auth_url)
-    print(f"\nWaiting for authorization and callback to: {REDIRECT}")
-    code = unquote(get_authorization_code(token))
-    flow.fetch_token(code=code)
-    refresh_token = flow.credentials.refresh_token
-    print(f"\nYour refresh token is: {refresh_token}\n")
-    cred = flow.credentials
-    # with open()
+    relpath = '../.secrets/token.json'
+    cred: [Credentials] = Credentials
+
+    if os.path.exists(relpath):
+        cred = Credentials.from_authorized_user_file(relpath, scopes)
+
+    elif not cred or not cred.valid:
+        if cred and cred.expired and cred.refresh_token:
+            cred.refresh(Request())
+
+        else:
+            flow = Flow.from_client_secrets_file(secpath, scopes=scopes)
+            flow.redirect_uri = REDIRECT
+            token = hashlib.shake_256(os.urandom(1024)).hexdigest(8)
+            auth_url, state = flow.authorization_url(
+                access_type="offline",
+                state=token,
+                prompt="consent",
+                include_granted_scopes="true",
+            )
+            print("Paste this URL into your browser: ")
+            print(auth_url)
+            print(f"\nWaiting for authorization and callback to: {REDIRECT}")
+            code = unquote(get_authorization_code(token))
+            flow.fetch_token(code=code)
+            refresh_token = flow.credentials.refresh_token
+            print(f"\nYour refresh token is: {refresh_token}\n")
+            cred = flow.credentials
+
+        with open(relpath, 'w') as token:
+            token.write(cred.json())
+
+    return cred
 
 
 if __name__ == '__main__':
     seakret = os.getenv('AUTH_SECRET')
     SCOPES = ['https://mail.google.com/', ]
     abspath = (pathlib.Path(__file__).parent / seakret).resolve()
-    service = main(str(abspath), SCOPES)
+    get_cred = main(str(abspath), SCOPES)
+    service = build('gmail', 'v1', credentials=get_cred)
