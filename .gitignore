@@ -1,5 +1,9 @@
 .env
 .secrets
+logs
+nginx.conf
+nginx_run
+gunicorn.conf.py
 
 *.py[cod]
 *.sw[op]
