@@ -6,6 +6,7 @@ nginx_run
 gunicorn.conf.py
 
 application_default_credentials.json
+credentials.json
 
 *.py[cod]
 *.sw[op]

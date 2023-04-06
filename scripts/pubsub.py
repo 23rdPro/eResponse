@@ -98,7 +98,8 @@ def pubsub(timeout=None):
         future.cancel()
         future.result()
         print(f'Error:::::::::pubsub(timeout code)>>>>{error}')
-    subscriber.close()
+    finally:
+        subscriber.close()
 
 
 def run():
