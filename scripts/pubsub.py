@@ -5,30 +5,39 @@ from eResponse.event.models import ThreadEvent, Role
 from google.cloud import pubsub_v1
 from googleapiclient.errors import HttpError
 
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 
-SCOPES = []
-
-
 def _auth():
+    print(os.path.exists('application_default_credentials.json'), '::::::;KKKKK')
+    SCOPES = ['mail', ]
     creds = None
-    if os.path.exists('../application_default_credentials.json'):
+    if os.path.exists('scripts/application_default_credentials.json'):
         creds = Credentials.from_authorized_user_file(
-            '../application_default_credentials.json', SCOPES)
+            'scripts/application_default_credentials.json', SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                '../credentials.json', SCOPES)
+                'scripts/credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
+        with open('scripts/application_default_credentials.json', 'w') as token:
+            token.write(creds.to_json())
 
+    gmservice = None
 
+    try:
+        gmservice = build('gmail', 'v1', credentials=creds)
+        # gmservice.users().threads()
+    except HttpError as error:
+        print(":::::::>>>>>>auth", error)
+        raise error
+    finally:
+        return gmservice
 
 
 service = _auth()
@@ -46,14 +55,6 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         # threads = service.users().threads().list(userId='me').execute().get('threads', [])
         print(message, ':::::::::::::::::::>>>>>>>>>>>')
         thread = service.users().threads().get(userId='me', id=message['historyId']).execute()
-
-        # with transaction.atomic:
-        #     for thread in threads:
-        #         if ThreadEvent.objects.filter(id=thread['id']).exists():
-        #             pass
-        #
-        #         else:
-        #             pass
 
         with transaction.atomic():
             event = ThreadEvent.objects.filter(id=thread['historyId'])  # or just id

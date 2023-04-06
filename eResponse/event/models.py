@@ -27,3 +27,4 @@ class Role(models.Model):
     id = models.BigIntegerField(primary_key=True, editable=False, unique=True)
     timestamp = models.DateTimeField(default=timezone.now)
     # timestamps when multiple responses are being added to ThreadEvent.roles
+    objects = models.Manager()
