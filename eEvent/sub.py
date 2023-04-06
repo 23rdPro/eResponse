@@ -74,7 +74,7 @@ def sub(eProjectId: str, eSubId: str, timeout: Optional[float] = None) -> None:
     print(f"Listening for messages on {eSubPath}..\n")
     try:
         future.result(timeout=timeout)
-    except: # noqa
+    except Exception as error:
         future.cancel()
         future.result()
     subscriber.close()

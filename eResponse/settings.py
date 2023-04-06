@@ -1,28 +1,18 @@
 import os
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv('.env')
 
+SECRET_KEY = os.getenv('SECRET_KEY')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '#9zna^)36*g9=ok6l9lulj^c0477lsy(d-^%tf*baofb$d8zh('
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.143']
 
-
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -32,8 +22,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'eResponse.event',  # create this app todo then how to deploy with gunicorn also ssl certificate for endpoint url can it be localhost for practise
-    'eResponse.user'
+    'django_extensions',
+
+    'eResponse.event',
+    'eResponse.user',
 
 
 ]
@@ -53,7 +45,7 @@ ROOT_URLCONF = 'eResponse.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -72,10 +64,6 @@ ASGI_APPLICATION = 'eResponse.asgi.application'
 
 AUTH_USER_MODEL = 'user.User'
 
-
-# Database
-# https://docs.djangoproject.com/en/3.0/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -86,9 +74,6 @@ DATABASES = {
         'PORT': ''
     }
 }
-
-# Password validation
-# https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -105,10 +90,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/3.0/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -119,23 +100,18 @@ USE_L10N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.0/howto/static-files/
-
 STATIC_URL = '/static/'
 
-# STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
-
-STATIC_ROOT = BASE_DIR / 'static/'
-
-# print(BASE_DIR / "static")
-# print(os.path.join(BASE_DIR, "static"))
+STATIC_ROOT = BASE_DIR / 'static_cdn/'
 
 STATICFILES_DIR = [
     BASE_DIR / "static"
 ]
 
-# AUTHENTICATION_BACKENDS = ['eResponse.user.auth.']
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CELERY_TIMEZONE = "Nigeria/Lagos"
+
+CELERY_TASK_TRACK_STARTED = True
+
+CELERY_TASK_TIME_LIMIT = 30 * 60

@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from eResponse.event.models import ThreadEvent
+
+
+@admin.register(ThreadEvent)
+class AdminThreadEvent(admin.ModelAdmin):
+    list_display = 'id', 'timestamp'
