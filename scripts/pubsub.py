@@ -35,10 +35,9 @@ def _auth():
 
     try:
         gmservice = build('gmail', 'v1', credentials=creds)
-        # gmservice.users().threads()
     except HttpError as error:
-        print(":::::::>>>>>>auth", error)
-        raise error
+        print(error)
+        # raise error
     finally:
         return gmservice
 
@@ -47,50 +46,61 @@ service = _auth()
 
 
 def callback(message: pubsub_v1.subscriber.message.Message):
-
-    def _bulk_create_role():
-        # return Role.objects.bulk_create([
-        #     Role(id=mess['historyId'], role='2') for mess in threads['messages']
-        #     if mess['historyId'] != threads['historyId']
-        # ])
-        # return Role.objects.bulk_create([
-        #     Role(id=)
-        # ])
-        # print(threads['messages'], '::::::;;;;:::;;;::><>mess')
-        return Role.objects.bulk_create([
-            Role(id=mess['historyId'], role='2') for mess in thread['messages']
-            if mess['historyId'] != thread['historyId']
-        ])
-
     try:
+        # messages are async
+        # Queue.put(message) this is then handled by celery in another process todo
         # threads = service.users().threads().list(userId='me').execute().get('threads', [])
-        # print(message, ':::::::::::::::::::>>>>>>>>>>>')
+
         decode = json.loads(message.data.decode('utf-8'))
-        print(decode, ':::::::::;;;;;;decode>>>>>>')
-        # our very own latest, newest threads
-        threads = service.users().history().list(userId='me', startHistoryId=decode['historyId']).execute()
-        history = threads['history']
-        threads_nextPageToken = threads['nextPageToken']  # str todo check(if nextPageToken)
-        # thread_queue = collections.deque()  # Queue()
-
-        # for hist in history: todo
-
-
-
-        # thread = service.users().threads().get(userId='me', startHistoryId=threads['historyId']).execute()
-        print(threads, ':::::::::::::::::::>>>>>>>>>>>')
+        latest_thread = service.users().history().list(userId='me', startHistoryId=decode['historyId']).execute()
 
         with transaction.atomic():
-            roles = _bulk_create_role()
-            event = ThreadEvent.objects.filter(id=thread['historyId'])
-            # event = ThreadEvent.objects.filter(id=threads['historyId'])  # or just id
+            event = ThreadEvent.objects.filter(id=latest_thread['historyId'])
+            history = latest_thread['history']  # list of message_history_modifying event
 
-            if event.exists():
-                event.get().roles.add(*roles)
-            else:
-                event = ThreadEvent(id=thread['historyId'], role='1')
+            roles = Role.objects.bulk_create([
+                Role(id=msg['historyId'], role='2') for msg in history
+                if msg['historyId'] != latest_thread['historyId']
+                # separation of role -information managers
+                # from information actors
+            ])
+
+            if not event.exists():
+                event = ThreadEvent(id=latest_thread['historyId'])
                 event.save()
                 event.roles.add(*roles)
+            else:
+                event.get().roles.add(*roles)
+
+        # threads_nextPageToken = threads['nextPageToken']  # str todo check(if nextPageToken) call next page
+        # thread_queue = collections.deque()  # Queue()
+
+        # for hist_object in history:  # messages in a single thread
+        # roles = Role.objects.bulk_create([
+        #     Role(id=hist['historyId'], role='2') for hist in history
+        #     if hist['historyId'] != threads['historyId']])
+
+        # get or create threads bulk_create with get_or_create in django todo
+        # batch_threads = ThreadEvent.objects.bulk_create([
+        #     ThreadEvent.objects.get_or_create(id=hist['historyId']) for hist in history
+        # ])
+
+        # for thread in history:
+
+        # thread = service.users().threads().get(userId='me', startHistoryId=threads['historyId']).execute()
+        # print(threads, ':::::::::::::::::::>>>>>>>>>>>')
+
+        # with transaction.atomic():
+        #     roles = _bulk_create_role()
+        #     event = ThreadEvent.objects.filter(id=thread['historyId'])
+        #     # event = ThreadEvent.objects.filter(id=threads['historyId'])  # or just id
+        #
+        #     if event.exists():
+        #         event.get().roles.add(*roles)
+        #     else:
+        #         event = ThreadEvent(id=thread['historyId'], role='1')
+        #         event.save()
+        #         event.roles.add(*roles)
 
     except HttpError or Exception as error:
         print(f'Error:::::::>>>>>{error}')
