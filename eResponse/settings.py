@@ -1,15 +1,14 @@
+import environ
 import os
 import json
 from pathlib import Path
-# from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# load_dotenv('.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = os.getenv('DEBUG')
+# print(json.loads(os.getenv('ALLOWED_HOSTS')))
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.143']
 
@@ -116,7 +115,6 @@ CELERY_TASK_TRACK_STARTED = True
 
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
-import environ
-
 env = environ.Env()
+
 env.read_env()
