@@ -1,3 +1,5 @@
+import collections
+import json
 import os
 from django.db import transaction
 
@@ -12,8 +14,9 @@ from googleapiclient.discovery import build
 
 
 def _auth():
-    print(os.path.exists('application_default_credentials.json'), '::::::;KKKKK')
-    SCOPES = ['mail', ]
+    SCOPES = ['https://www.googleapis.com/auth/cloud-platform',
+              'https://mail.google.com/',
+              'https://www.googleapis.com/auth/pubsub']
     creds = None
     if os.path.exists('scripts/application_default_credentials.json'):
         creds = Credentials.from_authorized_user_file(
@@ -46,6 +49,14 @@ service = _auth()
 def callback(message: pubsub_v1.subscriber.message.Message):
 
     def _bulk_create_role():
+        # return Role.objects.bulk_create([
+        #     Role(id=mess['historyId'], role='2') for mess in threads['messages']
+        #     if mess['historyId'] != threads['historyId']
+        # ])
+        # return Role.objects.bulk_create([
+        #     Role(id=)
+        # ])
+        # print(threads['messages'], '::::::;;;;:::;;;::><>mess')
         return Role.objects.bulk_create([
             Role(id=mess['historyId'], role='2') for mess in thread['messages']
             if mess['historyId'] != thread['historyId']
@@ -53,12 +64,26 @@ def callback(message: pubsub_v1.subscriber.message.Message):
 
     try:
         # threads = service.users().threads().list(userId='me').execute().get('threads', [])
-        print(message, ':::::::::::::::::::>>>>>>>>>>>')
-        thread = service.users().threads().get(userId='me', id=message['historyId']).execute()
+        # print(message, ':::::::::::::::::::>>>>>>>>>>>')
+        decode = json.loads(message.data.decode('utf-8'))
+        print(decode, ':::::::::;;;;;;decode>>>>>>')
+        # our very own latest, newest threads
+        threads = service.users().history().list(userId='me', startHistoryId=decode['historyId']).execute()
+        history = threads['history']
+        threads_nextPageToken = threads['nextPageToken']  # str todo check(if nextPageToken)
+        # thread_queue = collections.deque()  # Queue()
+
+        # for hist in history: todo
+
+
+
+        # thread = service.users().threads().get(userId='me', startHistoryId=threads['historyId']).execute()
+        print(threads, ':::::::::::::::::::>>>>>>>>>>>')
 
         with transaction.atomic():
-            event = ThreadEvent.objects.filter(id=thread['historyId'])  # or just id
             roles = _bulk_create_role()
+            event = ThreadEvent.objects.filter(id=thread['historyId'])
+            # event = ThreadEvent.objects.filter(id=threads['historyId'])  # or just id
 
             if event.exists():
                 event.get().roles.add(*roles)
@@ -67,20 +92,18 @@ def callback(message: pubsub_v1.subscriber.message.Message):
                 event.save()
                 event.roles.add(*roles)
 
-    except HttpError as error:
+    except HttpError or Exception as error:
         print(f'Error:::::::>>>>>{error}')
     finally:
         message.ack()
 
 
-def pubsub(timeout=None):
+def pubsub(timeout=100):
     # publisher code
-    PID = os.getenv("PID")  # project_id
-    TID = os.getenv("TID")  # topic_id -publisher
-    SID = os.getenv("SID")
 
     publisher = pubsub_v1.PublisherClient()
-    tpath = publisher.topic_path(PID, TID)
+    # tpath = publisher.topic_path(PID, TID)
+    tpath = 'projects/eresponse/topics/eEvent'
 
     request = {'labelIds': ['INBOX'], 'topicName': tpath}
     # make actual call service.users.watch
@@ -89,7 +112,8 @@ def pubsub(timeout=None):
 
     # subscriber code
     subscriber = pubsub_v1.SubscriberClient()
-    spath = subscriber.subscription_path(PID, SID)
+    # spath = subscriber.subscription_path(PID, SID)
+    spath = 'projects/eresponse/subscriptions/eEvent-sub'
     future = subscriber.subscribe(spath, callback=callback)
     print(f"Listening for messages on {spath}..\n")
     try:
