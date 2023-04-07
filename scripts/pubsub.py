@@ -1,4 +1,3 @@
-import collections
 import json
 import os
 from django.db import transaction
@@ -49,14 +48,18 @@ def callback(message: pubsub_v1.subscriber.message.Message):
     try:
         # messages are async
         # Queue.put(message) this is then handled by celery in another process todo
-        # threads = service.users().threads().list(userId='me').execute().get('threads', [])
 
         decode = json.loads(message.data.decode('utf-8'))
-        latest_thread = service.users().history().list(userId='me', startHistoryId=decode['historyId']).execute()
+        latest_thread = service.users().history().list(
+            userId='me', startHistoryId=decode['historyId']
+        ).execute()
 
         with transaction.atomic():
-            event = ThreadEvent.objects.filter(id=latest_thread['historyId'])
-            history = latest_thread['history']  # list of message_history_modifying event
+            event = ThreadEvent.objects.filter(
+                id=latest_thread['historyId'])
+
+            # list of message_history_modifying event
+            history = latest_thread['history']
 
             roles = Role.objects.bulk_create([
                 Role(id=msg['historyId'], role='2') for msg in history
@@ -72,35 +75,8 @@ def callback(message: pubsub_v1.subscriber.message.Message):
             else:
                 event.get().roles.add(*roles)
 
-        # threads_nextPageToken = threads['nextPageToken']  # str todo check(if nextPageToken) call next page
-        # thread_queue = collections.deque()  # Queue()
-
-        # for hist_object in history:  # messages in a single thread
-        # roles = Role.objects.bulk_create([
-        #     Role(id=hist['historyId'], role='2') for hist in history
-        #     if hist['historyId'] != threads['historyId']])
-
-        # get or create threads bulk_create with get_or_create in django todo
-        # batch_threads = ThreadEvent.objects.bulk_create([
-        #     ThreadEvent.objects.get_or_create(id=hist['historyId']) for hist in history
-        # ])
-
-        # for thread in history:
-
-        # thread = service.users().threads().get(userId='me', startHistoryId=threads['historyId']).execute()
-        # print(threads, ':::::::::::::::::::>>>>>>>>>>>')
-
-        # with transaction.atomic():
-        #     roles = _bulk_create_role()
-        #     event = ThreadEvent.objects.filter(id=thread['historyId'])
-        #     # event = ThreadEvent.objects.filter(id=threads['historyId'])  # or just id
-        #
-        #     if event.exists():
-        #         event.get().roles.add(*roles)
-        #     else:
-        #         event = ThreadEvent(id=thread['historyId'], role='1')
-        #         event.save()
-        #         event.roles.add(*roles)
+        # threads_nextPageToken = threads['nextPageToken'] todo
+        # str todo check(if nextPageToken) call next page
 
     except HttpError or Exception as error:
         print(f'Error:::::::>>>>>{error}')
@@ -110,28 +86,25 @@ def callback(message: pubsub_v1.subscriber.message.Message):
 
 def pubsub(timeout=100):
     # publisher code
-
-    publisher = pubsub_v1.PublisherClient()
-    # tpath = publisher.topic_path(PID, TID)
-    tpath = 'projects/eresponse/topics/eEvent'
-
+    tpath = os.getenv('tpath')
     request = {'labelIds': ['INBOX'], 'topicName': tpath}
+
     # make actual call service.users.watch
     service.users().watch(userId='me', body=request).execute()
-    # todo error maybe
+    # enabled gmail service to push to pubsub
 
     # subscriber code
     subscriber = pubsub_v1.SubscriberClient()
-    # spath = subscriber.subscription_path(PID, SID)
-    spath = 'projects/eresponse/subscriptions/eEvent-sub'
+    spath = os.getenv('spath')
     future = subscriber.subscribe(spath, callback=callback)
     print(f"Listening for messages on {spath}..\n")
+
     try:
         future.result(timeout=timeout)
     except TimeoutError or Exception as error:  # noqa
         future.cancel()
         future.result()
-        print(f'Error:::::::::pubsub(timeout code)>>>>{error}')
+        print(f'Error:::::::::pubsub>>>>{error}')
     finally:
         subscriber.close()
 
