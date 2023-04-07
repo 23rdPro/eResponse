@@ -13,7 +13,7 @@ import os
 
 @app.on_after_configure.connect
 def renew_watch_service(sender, **kwargs):
-    sender.add_periodic_task(crontab(minute=0, hour=0),call_service.s())
+    sender.add_periodic_task(crontab(minute=0, hour=0), call_service.s())
 
 
 @app.task
