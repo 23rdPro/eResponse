@@ -10,7 +10,7 @@ class ThreadEvent(models.Model):
     role: for each thread, the first message is the root while others
     are responses
     This model is structured not on individual contents of messages,
-    but on timestamp successively been recorded in the db
+    but on timestamps successively been recorded in the db
     """
     timestamp = models.DateTimeField(default=timezone.now)
     # timestamp when new thread event is recorded the first time
