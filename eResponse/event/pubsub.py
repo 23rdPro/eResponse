@@ -54,31 +54,31 @@ def callback(message: pubsub_v1.subscriber.message.Message):
             userId='me', startHistoryId=decode['historyId']
         ).execute()
 
+        #  History IDs increase chronologically but are not
+        #  contiguous with random gaps in between valid IDs.
+
         print(":::::::::>>>>>latest_thread<<<<<<<<", latest_thread)
         print()
         print(":::::::::>>>>>history<<<<<<<<", latest_thread['history'])
 
         with transaction.atomic():
-            event = ThreadEvent.objects.filter(
-                id=latest_thread['historyId'])
-
             # list of message_history_modifying event
+            # properly spread random events -statistics
             history = latest_thread['history']
+            assert latest_thread['historyId'] == history[0]['historyId']
+            # assert first message in history is latest_thread
 
-            if len(history) > 1:
-                roles = Role.objects.bulk_create([
-                    Role(id=msg['historyId'], role='2') for msg in history
-                    if msg['historyId'] != latest_thread['historyId']
-                    # separation of role -information managers
-                    # from information actors
-                ])
+            event = ThreadEvent.objects.filter(id=latest_thread['historyId'])
 
-                if not event.exists():
-                    event = ThreadEvent(id=latest_thread['historyId'])
-                    event.save()
-                    event.roles.add(*roles)
-                else:
-                    event.get().roles.add(*roles)
+            if not event.exists():
+                ThreadEvent.objects.create(id=latest_thread['historyId'])
+
+            else:
+                event.get().roles.add(*Role.objects.bulk_create([Role(
+                    id=msg['historyId'], role='2') for msg in history
+                    if not Role.objects.filter(
+                        id=msg['historyId']
+                    ).exists()]))
 
         # threads_nextPageToken = threads['nextPageToken'] todo
         # str todo check(if nextPageToken) call next page
