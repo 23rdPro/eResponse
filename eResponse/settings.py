@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     'django_extensions',
 
     'eResponse.event',
-    'eResponse.response',
+    # 'eResponse.response',
     'eResponse.user',
 
 
