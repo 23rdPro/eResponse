@@ -1,14 +1,8 @@
-from celery.schedules import crontab
-
-# from celery.task import periodic_task
-
-
-# service.users.watch()
+import os
 from eResponse.celery import app
 from eResponse.event.pubsub import service
 from google.cloud import pubsub_v1
 from celery.schedules import crontab
-import os
 
 
 @app.on_after_configure.connect
