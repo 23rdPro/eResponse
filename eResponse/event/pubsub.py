@@ -54,6 +54,10 @@ def callback(message: pubsub_v1.subscriber.message.Message):
             userId='me', startHistoryId=decode['historyId']
         ).execute()
 
+        print(":::::::::>>>>>latest_thread<<<<<<<<", latest_thread)
+        print()
+        print(":::::::::>>>>>history<<<<<<<<", latest_thread['history'])
+
         with transaction.atomic():
             event = ThreadEvent.objects.filter(
                 id=latest_thread['historyId'])
@@ -61,19 +65,20 @@ def callback(message: pubsub_v1.subscriber.message.Message):
             # list of message_history_modifying event
             history = latest_thread['history']
 
-            roles = Role.objects.bulk_create([
-                Role(id=msg['historyId'], role='2') for msg in history
-                if msg['historyId'] != latest_thread['historyId']
-                # separation of role -information managers
-                # from information actors
-            ])
+            if len(history) > 1:
+                roles = Role.objects.bulk_create([
+                    Role(id=msg['historyId'], role='2') for msg in history
+                    if msg['historyId'] != latest_thread['historyId']
+                    # separation of role -information managers
+                    # from information actors
+                ])
 
-            if not event.exists():
-                event = ThreadEvent(id=latest_thread['historyId'])
-                event.save()
-                event.roles.add(*roles)
-            else:
-                event.get().roles.add(*roles)
+                if not event.exists():
+                    event = ThreadEvent(id=latest_thread['historyId'])
+                    event.save()
+                    event.roles.add(*roles)
+                else:
+                    event.get().roles.add(*roles)
 
         # threads_nextPageToken = threads['nextPageToken'] todo
         # str todo check(if nextPageToken) call next page
@@ -86,12 +91,12 @@ def callback(message: pubsub_v1.subscriber.message.Message):
 
 def pubsub(timeout=100):
     # publisher code
-    tpath = os.getenv('tpath')
+    tpath = os.getenv('tpath')  # topic path
     request = {'labelIds': ['INBOX'], 'topicName': tpath}
 
     # make actual call service.users.watch
     service.users().watch(userId='me', body=request).execute()
-    # enabled gmail service to push to pubsub
+    # enabled gmail service to push to pubsub topic
 
     # subscriber code
     subscriber = pubsub_v1.SubscriberClient()
