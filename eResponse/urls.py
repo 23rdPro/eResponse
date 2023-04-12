@@ -5,10 +5,10 @@ from django.conf import settings
 
 
 urlpatterns = [
-    path('', admin.site.urls, name='home'),
+    path('', admin.site.urls),
     path('admin/', admin.site.urls),
 ]
 
-#
+
 if settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
