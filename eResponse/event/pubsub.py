@@ -1,5 +1,7 @@
 import json
 import os
+import pprint
+
 from django.db import transaction
 
 from eResponse.event.models import ThreadEvent, Role
@@ -47,39 +49,33 @@ service = _auth()
 def callback(message: pubsub_v1.subscriber.message.Message):
     try:
         # messages are async
-        # Queue.put(message) this is then handled by celery in another process todo
+        # Queue.put(message), handled by celery in another process todo
 
         decode = json.loads(message.data.decode('utf-8'))
         latest_thread = service.users().history().list(
             userId='me', startHistoryId=decode['historyId']
         ).execute()
 
-        #  History IDs increase chronologically but are not
-        #  contiguous with random gaps in between valid IDs.
+        if 'history' in latest_thread:
 
-        print(":::::::::>>>>>latest_thread<<<<<<<<", latest_thread)
-        print()
-        print(":::::::::>>>>>history<<<<<<<<", latest_thread['history'])
-
-        with transaction.atomic():
-            # list of message_history_modifying event
-            # properly spread random events -statistics
             history = latest_thread['history']
-            assert latest_thread['historyId'] == history[0]['historyId']
-            # assert first message in history is latest_thread
 
-            event = ThreadEvent.objects.filter(id=latest_thread['historyId'])
+            with transaction.atomic():
+                threads = ThreadEvent.objects.bulk_create([
+                    ThreadEvent(id=item['messages'][0]['threadId'])
+                    for item in history if not ThreadEvent.objects.filter(
+                        id=item['messages'][0]['threadId']
+                    ).exists])
 
-            if not event.exists():
-                ThreadEvent.objects.create(id=latest_thread['historyId'])
+                for i, thread in enumerate(threads):
+                    assert history[i]['messages'][0]['threadId'] == thread.id
 
-            else:
-                event.get().roles.add(*Role.objects.bulk_create([Role(
-                    id=msg['historyId'], role='2') for msg in history
-                    if not Role.objects.filter(
-                        id=msg['historyId']
-                    ).exists()]))
+                    thread.roles.add(*Role.objects.bulk_create([
+                        Role(id=msg['threadId'])
+                        for msg in history[i]['messages'][len(thread.roles.all()):]
+                    ]))
 
+            # properly spread random events -statistics todo
         # threads_nextPageToken = threads['nextPageToken'] todo
         # str todo check(if nextPageToken) call next page
 
@@ -89,14 +85,14 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         message.ack()
 
 
-def pubsub(timeout=100):
+def pubsub(timeout=None):
     # publisher code
     tpath = os.getenv('tpath')  # topic path
     request = {'labelIds': ['INBOX'], 'topicName': tpath}
 
     # make actual call service.users.watch
     service.users().watch(userId='me', body=request).execute()
-    # enabled gmail service to push to pubsub topic
+    # enable gmail service to push to pubsub topic
 
     # subscriber code
     subscriber = pubsub_v1.SubscriberClient()
