@@ -14,17 +14,17 @@ class ThreadEvent(models.Model):
     """
     timestamp = models.DateTimeField(default=timezone.now)
     # timestamp when new thread event is recorded the first time
-    id = models.BigIntegerField(primary_key=True, editable=False, unique=True)
+    id = models.CharField(max_length=128, primary_key=True, editable=False, unique=True)
     roles = models.ManyToManyField('Role')  # cannot be blank
     objects = models.Manager()
 
 
-ROLES = ((ROOT := "1", "ROOT"), (RESPONSE := "2", "RESPONSE"))
+# ROLES = ((ROOT := "1", "ROOT"), (RESPONSE := "2", "RESPONSE"))
 
 
 class Role(models.Model):
-    role = models.CharField(max_length=1, choices=ROLES)
-    id = models.BigIntegerField(primary_key=True, editable=False, unique=True)
+    # role = models.CharField(max_length=1, choices=ROLES)
+    id = models.CharField(max_length=128, primary_key=True, editable=False, unique=True)
     timestamp = models.DateTimeField(default=timezone.now)
     # timestamps when multiple responses are being added to ThreadEvent.roles
     objects = models.Manager()
