@@ -1,14 +1,16 @@
 import environ
 import os
-import json
 from pathlib import Path
+
+env = environ.Env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+environ.Env.read_env(os.path.join(BASE_DIR / '.env'))
 
-DEBUG = os.getenv('DEBUG')
-# print(json.loads(os.getenv('ALLOWED_HOSTS')))
+SECRET_KEY = env('SECRET_KEY')
+
+DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.143']
 
@@ -67,9 +69,9 @@ AUTH_USER_MODEL = 'user.User'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('NAME'),
-        'USER': os.getenv('USER'),
-        'PASSWORD': os.getenv('PASSWORD'),
+        'NAME': env('NAME'),
+        'USER': env('ADMIN'),
+        'PASSWORD': env('PASSWORD'),
         'HOST': 'localhost',
         'PORT': ''
     }
@@ -110,13 +112,9 @@ STATICFILES_DIR = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-env = environ.Env()
-
-env.read_env()
-
 # CELERY
-CELERY_BROKER_URL = os.environ.get('REDIS_URL')
-CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
+CELERY_BROKER_URL = os.getenv('REDIS_URL')
+CELERY_RESULT_BACKEND = os.getenv('REDIS_URL')
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
