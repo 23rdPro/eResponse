@@ -1,24 +1,22 @@
 import os
-from eResponse.event import service
-from eResponse.event.tasks import ack_pubsub_message
+from eResponse.event.auth import service
+from eResponse.event import tasks
 from google.cloud import pubsub_v1
 
 
-def callback(message: pubsub_v1.subscriber.message.Message):
-    ack_pubsub_message.delay(message)
-    message.ack()
-
-
 def pubsub(timeout=None):
-    # publisher code
+
+    def callback(message: pubsub_v1.subscriber.message.Message):
+        # decode = json.loads(message.data.decode('utf-8'))
+        tasks.ack_pubsub_message.delay()
+        message.ack()
+
     tpath = os.getenv('tpath')  # topic path
     request = {'labelIds': ['INBOX'], 'topicName': tpath}
 
-    # make actual call service.users.watch
+    # make call with watch() to push to pubsub topic
     service.users().watch(userId='me', body=request).execute()
-    # enable gmail service to push to pubsub topic
 
-    # subscriber code
     subscriber = pubsub_v1.SubscriberClient()
     spath = os.getenv('spath')
     future = subscriber.subscribe(spath, callback=callback)
