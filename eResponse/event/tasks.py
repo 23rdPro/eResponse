@@ -55,8 +55,8 @@ def _run_process(threads: dict) -> None:
                     tred['messages'][len(event.roles.all()):]
                 ]))
 
-    if pageToken is not None:
-        LastEventToken(token=pageToken).save()
+            if pageToken is not None:
+                LastEventToken(token=pageToken).save()
 
     return
 
