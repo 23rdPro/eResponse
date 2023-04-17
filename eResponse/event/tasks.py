@@ -39,11 +39,13 @@ def _run_process(threads: dict) -> None:
     # assert 'threads' in threads
     if 'threads' in threads:
         with transaction.atomic():
-            events = [ThreadEvent.objects.get(id=thread['id']) if
-                      ThreadEvent.objects.filter(id=thread['id']).exists()
-                      else ThreadEvent.objects.create(id=thread['id'])
-                      for thread in threads['threads']
-                      ]
+
+            events = [
+                ThreadEvent.objects.create(id=thread['id'])
+                if not ThreadEvent.objects.filter(id=thread['id']).exists()
+                else ThreadEvent.objects.get(id=thread['id'])
+                for thread in threads['threads']
+            ]
 
             for i, event in enumerate(events):
                 tred = service.users().threads().get(
