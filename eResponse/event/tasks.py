@@ -1,14 +1,10 @@
 import os
-import json
 import celery
-from abc import ABC
 from eResponse.celery import app
-from eResponse.event.pubsub import service
-from eResponse.event.models import ThreadEvent, Role
+from eResponse.event.auth import service
+from eResponse.event.models import ThreadEvent, Role, LastEventToken
 from google.cloud import pubsub_v1
-from googleapiclient.errors import HttpError
 from celery.schedules import crontab
-from celery import shared_task
 from django.db import transaction
 
 
@@ -18,7 +14,7 @@ def renew_watch_service(sender, **kwargs):
 
 
 @app.task
-def call_service():
+def call_service() -> None:
     publisher = pubsub_v1.PublisherClient()
     PID = os.getenv("PID")  # project_id
     TID = os.getenv("TID")  # topic_id
@@ -28,43 +24,55 @@ def call_service():
     service.users().watch(userId='me', body=request).execute()
 
 
-class BaseRetryTask(celery.Task, ABC):
-    autoretry_for = (Exception, )
-    retry_backoff = True
-    retry_jitter = True
-    retry_kwargs = {'max_retries': 5, 'countdown': 5}
+def _run_process(threads: dict) -> None:
+    pageToken = None
 
+    # cycle to the last page of threads
+    while 'nextPageToken' in threads:
+        pageToken = threads['nextPageToken']
 
-@shared_task(bind=True, base=BaseRetryTask)
-def ack_pubsub_message(message: pubsub_v1.subscriber.message.Message) -> None:
-    decode = json.loads(message.data.decode('utf-8'))
-    latest_change = None
-
-    try:
-        latest_change = service.users().history().list(
-            userId='me', startHistoryId=decode['historyId']
+        threads = service.users().threads().list(
+            userId='me', includeSpamTrash=False,
+            pageToken=pageToken
         ).execute()
 
-    except HttpError:
-        raise HttpError
-
-    if 'history' in latest_change:
-
-        history = latest_change['history']
-
+    # assert 'threads' in threads
+    if 'threads' in threads:
         with transaction.atomic():
+            events = [ThreadEvent.objects.get(id=thread['id']) if
+                      ThreadEvent.objects.filter(id=thread['id']).exists()
+                      else ThreadEvent.objects.create(id=thread['id'])
+                      for thread in threads['threads']
+                      ]
 
-            threads = ThreadEvent.objects.bulk_create([
-                ThreadEvent(id=item['messages'][0]['threadId'])
-                for item in history if not ThreadEvent.objects.filter(
-                    id=item['messages'][0]['threadId']
-                ).exists])
+            for i, event in enumerate(events):
+                tred = service.users().threads().get(
+                    userId='me', id=event.id, format='minimal'
+                ).execute()
 
-            for i, thread in enumerate(threads):
-                assert history[i]['messages'][0]['threadId'] == thread.id
-
-                thread.roles.add(*Role.objects.bulk_create([
-                    Role(id=msg['threadId'])
-                    for msg in history[i]['messages'][len(thread.roles.all()):]
+                event.roles.add(*Role.objects.bulk_create([
+                    Role(id=msg['id']) for msg in
+                    tred['messages'][len(event.roles.all()):]
                 ]))
+
+    if pageToken is not None:
+        LastEventToken(token=pageToken).save()
+
+    return
+
+
+@celery.shared_task()
+def ack_pubsub_message() -> None:
+    last_event_token = LastEventToken.objects.filter()
+
+    # starts from last known token subsequently
+    if not last_event_token.exists():
+        _run_process(service.users().threads().list(
+            userId='me', includeSpamTrash=False
+        ).execute())
+    else:
+        _run_process(service.users().threads().list(
+            userId='me', includeSpamTrash=False,
+            pageToken=last_event_token.last().token
+        ).execute())
     return
