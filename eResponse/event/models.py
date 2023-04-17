@@ -29,4 +29,8 @@ class Role(models.Model):
     id = models.CharField(max_length=128, primary_key=True, editable=False, unique=True)
     timestamp = models.DateTimeField(default=timezone.now)
     # timestamps when multiple responses are being added to ThreadEvent.roles
+
+    response_time = models.DecimalField(decimal_places=3, max_digits=12)
+    # approximate time to add to ThreadEvent[id].roles
+
     objects = models.Manager()
