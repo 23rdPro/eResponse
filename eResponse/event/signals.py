@@ -10,14 +10,14 @@ def role_response_time_signal(sender, instance, **kwargs):
     prev = None
     # async events will trigger this signal,
     # it's important to note db integrity
-    with transaction.atomic():
-        for message in instance.roles.all():
-            if prev is None:
-                prev = message.timestamp
-
-            if not message.response_time:
-                mean = ((message.timestamp-instance.timestamp) +
-                        (message.timestamp-prev)) / 2
-                message.response_time = mean.total_seconds()
-
+    # with transaction.atomic():
+    for message in instance.roles.all():
+        if prev is None:
             prev = message.timestamp
+
+        if not message.response_time:
+            mean = ((message.timestamp-instance.timestamp) +
+                    (message.timestamp-prev)) / 2
+            message.response_time = mean.total_seconds()
+
+        prev = message.timestamp
