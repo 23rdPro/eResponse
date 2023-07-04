@@ -34,9 +34,7 @@ class Role(models.Model):
     timestamp = models.DateTimeField(default=timezone.now)
     # timestamps when multiple responses are being added to ThreadEvent.roles
 
-    response_time = models.DecimalField(
-        decimal_places=3, max_digits=12, blank=True, null=True
-    )
-    # approximate time for each role from ThreadEvent[id]
-
     objects = models.Manager()
+
+    class Meta:
+        ordering = ['timestamp']
