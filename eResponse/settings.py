@@ -24,10 +24,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'django_extensions',
+    'phonenumber_field',
 
     'eResponse.event',
-    # 'eResponse.response',
+    'eResponse.response',
     'eResponse.user',
+    'eResponse.core',
 
 
 ]
