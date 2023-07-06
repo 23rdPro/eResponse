@@ -1,6 +1,5 @@
 from django.contrib import admin
-
-from eResponse.event.models import ThreadEvent, Role, LastEventToken
+from .models import ThreadEvent, Role, LastEventToken
 
 
 @admin.register(ThreadEvent)
