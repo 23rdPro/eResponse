@@ -22,3 +22,4 @@ class UserSchema(ModelSchema):
 
     class Config:
         model = get_user_model()
+
