@@ -1,19 +1,17 @@
 import os
 import celery
-from eResponse.celery import app
-from eResponse.event.auth import service
-from eResponse.event.models import ThreadEvent, Role, LastEventToken
+import eResponse
 from google.cloud import pubsub_v1
 from celery.schedules import crontab
 from django.db import transaction
 
 
-@app.on_after_configure.connect
+@eResponse.celery.app.on_after_configure.connect
 def renew_watch_service(sender, **kwargs):
     sender.add_periodic_task(crontab(minute=0, hour=0), call_service.s())
 
 
-@app.task
+@eResponse.celery.app.task
 def call_service() -> None:
     publisher = pubsub_v1.PublisherClient()
     PID = os.getenv("PID")  # project_id
@@ -21,18 +19,20 @@ def call_service() -> None:
     tpath = publisher.topic_path(PID, TID)
     request = {'labelIds': ['INBOX'], 'topicName': tpath}
     # make actual call service.users.watch
-    service.users().watch(userId='me', body=request).execute()
+    eResponse.event.auth.service.users().watch(
+        userId='me', body=request
+    ).execute()
 
 
 @celery.shared_task()
 def complete_pubsub_task():
-    if LastEventToken.objects.exists():
-        token = LastEventToken.objects.last()
-        latest_threads = service.users().threads().list(
+    if eResponse.event.models.LastEventToken.objects.exists():
+        token = eResponse.event.models.LastEventToken.objects.last()
+        latest_threads = eResponse.event.auth.service.users().threads().list(
             userId='me', includeSpamTrash=False, pageToken=token
         ).execute()
     else:
-        latest_threads = service.users().threads().list(
+        latest_threads = eResponse.event.auth.service.users().threads().list(
             userId='me', includeSpamTrash=False
         ).execute()
 
@@ -41,18 +41,19 @@ def complete_pubsub_task():
     while 'nextPageToken' in latest_threads:
         token = latest_threads['nextPageToken']
 
-        latest_threads = service.users().threads().list(
+        latest_threads = eResponse.event.auth.service.users().threads().list(
             userId='me', includeSpamTrash=False, pageToken=token
         ).execute()
     else:
         if token is not None:
-            LastEventToken(token=token).save()
+            eResponse.event.models.LastEventToken(token=token).save()
 
     # assert 'threads' in latest_threads
     if 'threads' in latest_threads:
         # atomic transaction favors credible db writes
         with transaction.atomic():
             # create threads from the list of threads in bulk
+            ThreadEvent = eResponse.event.models.ThreadEvent
             events = [
                 ThreadEvent.objects.create(id=thread['id'])
                 if not ThreadEvent.objects.filter(id=thread['id']).exists()
@@ -61,9 +62,11 @@ def complete_pubsub_task():
             ]
             # create roles for each thread in the list of messages in bulk
             for i, event in enumerate(events):
-                thd = service.users().threads().get(
+                thd = eResponse.event.auth.service.users().threads().get(
                     userId='me', id=event.id, format='minimal'
                 ).execute()
+
+                Role = eResponse.event.models.Role
 
                 event.roles.add(*Role.objects.bulk_create([
                     Role(id=msg['id']) for msg in
@@ -79,7 +82,7 @@ def _run_process(threads: dict) -> None:
     while 'nextPageToken' in threads:
         pageToken = threads['nextPageToken']
 
-        threads = service.users().threads().list(
+        threads = eResponse.event.auth.service.users().threads().list(
             userId='me', includeSpamTrash=False,
             pageToken=pageToken
         ).execute()
@@ -87,6 +90,8 @@ def _run_process(threads: dict) -> None:
     # assert 'threads' in threads
     if 'threads' in threads:
         with transaction.atomic():
+
+            ThreadEvent = eResponse.event.models.ThreadEvent
 
             events = [
                 ThreadEvent.objects.create(id=thread['id'])
@@ -96,14 +101,18 @@ def _run_process(threads: dict) -> None:
             ]
 
             for i, event in enumerate(events):
-                tred = service.users().threads().get(
+                tred = eResponse.event.auth.service.users().threads().get(
                     userId='me', id=event.id, format='minimal'
                 ).execute()
+
+                Role = eResponse.event.models.Role
 
                 event.roles.add(*Role.objects.bulk_create([
                     Role(id=msg['id']) for msg in
                     tred['messages'][len(event.roles.all()):]
                 ]))
+
+            LastEventToken = eResponse.event.models.LastEventToken
 
             if pageToken is not None:
                 LastEventToken(token=pageToken).save()
@@ -113,15 +122,16 @@ def _run_process(threads: dict) -> None:
 
 @celery.shared_task()
 def ack_pubsub_message() -> None:
+    LastEventToken = eResponse.event.models.LastEventToken
     last_event_token = LastEventToken.objects.filter()
 
     # starts from last known token subsequently
     if not last_event_token.exists():
-        _run_process(service.users().threads().list(
+        _run_process(eResponse.event.auth.service.users().threads().list(
             userId='me', includeSpamTrash=False
         ).execute())
     else:
-        _run_process(service.users().threads().list(
+        _run_process(eResponse.event.auth.service.users().threads().list(
             userId='me', includeSpamTrash=False,
             pageToken=last_event_token.last().token
         ).execute())
