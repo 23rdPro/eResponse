@@ -1,5 +1,7 @@
 import json
 import os
+import eResponse
+
 from django.contrib.auth.models import (
     AbstractBaseUser,
     Group,
@@ -12,10 +14,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 from phonenumber_field.modelfields import PhoneNumberField
-from eResponse.mixins import TimeMixin, IDMixin
-from eResponse.user.managers import UserManager
-
-from eResponse.user.FastAPI.schemas import UserSchema
 
 
 def avatars_path(instance: Any, filename: str) -> Union[str, Callable, Path]:
@@ -28,7 +26,10 @@ def avatars_path(instance: Any, filename: str) -> Union[str, Callable, Path]:
     return os.path.join(*["avatars", instance.email, "%Y/%m/%d", filename])
 
 
-class User(TimeMixin, IDMixin, AbstractBaseUser, PermissionsMixin):
+class User(
+    eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin,
+    AbstractBaseUser, PermissionsMixin,
+):
     groups = models.ManyToManyField(Group, related_name='groups')
     # not blank because every user belong to at least one group
 
@@ -46,7 +47,7 @@ class User(TimeMixin, IDMixin, AbstractBaseUser, PermissionsMixin):
                                             related_name='certificates')
     avatar = models.FileField(upload_to=avatars_path)
 
-    objects = UserManager()
+    objects = eResponse.user.managers.UserManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []  # none, to allow frontend auth flow
@@ -72,7 +73,7 @@ class User(TimeMixin, IDMixin, AbstractBaseUser, PermissionsMixin):
         return reverse('user:detail', kwargs={'id': self.id})
 
     @classmethod
-    def from_api(cls, model: UserSchema):
+    def from_api(cls, model: eResponse.user.FastAPI.schemas.UserSchema):
         """
         returns a user instance from schema instance
         :param model:
@@ -94,7 +95,7 @@ class User(TimeMixin, IDMixin, AbstractBaseUser, PermissionsMixin):
             avatar=json_data['avatar'],
         )
 
-    def update_from_api(self, model: UserSchema):
+    def update_from_api(self, model: eResponse.user.FastAPI.schemas.UserSchema):
         """
         update user model with schema instance
         :return:
@@ -133,7 +134,7 @@ def cert_path(certificate: Any, filename: str) -> Union[str, Callable, Path]:
     )
 
 
-class Certification(TimeMixin):
+class Certification(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
     title = models.CharField(_("Title"), max_length=128, )
     description = models.TextField(_('Describe achievement'), max_length=555)
     # department = models.Choices  # todo confirm from operations
