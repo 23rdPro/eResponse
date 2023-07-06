@@ -4,19 +4,16 @@ There will be two major groups of Emergency: natural and synthetic, and must be 
 with at least one management level user.
 """
 
-import uuid
 import logging
+import eResponse
 
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
 
-from eResponse.mixins import TimeMixin
 
-
-class Emergency(TimeMixin):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True, unique=True)
+class Emergency(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='type')
 
     # all users regardless of groups however a manager must instantiate
@@ -27,9 +24,9 @@ class Emergency(TimeMixin):
     briefs = models.ManyToManyField("Brief", related_name='briefs')
 
     class Severity(models.IntegerChoices):
-        BAD = 1, "Bad"
-        TERRIBLE = 2, "Terrible"
-        CATACLYSMIC = 3, "Cataclysmic"
+        BAD: tuple = 1, "Bad"
+        TERRIBLE: tuple = 2, "Terrible"
+        CATACLYSMIC: tuple = 3, "Cataclysmic"
 
     severity = models.IntegerField(
         choices=Severity.choices,
@@ -62,8 +59,7 @@ class Emergency(TimeMixin):
     objects = EmergencyQuerySet.as_manager()
 
 
-class Brief(TimeMixin):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True, unique=True)
+class Brief(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
     title = models.CharField(_("Title Description"), max_length=255)
     text = models.TextField(_("Text"), max_length=500, blank=False, null=False)
     pictures = models.ManyToManyField("Picture", blank=True, related_name='pictures')
@@ -71,12 +67,12 @@ class Brief(TimeMixin):
     objects = models.Manager()
 
 
-class Picture(TimeMixin):
+class Picture(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
     picture = models.FileField(upload_to='jpegs/%Y/%m/%d/')
     objects = models.Manager()
     # attachments = models.FileField(upload_to=f'../media/{user.username}/') todo
 
 
-class Video(TimeMixin):
+class Video(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
     video = models.FileField(upload_to='tapes/%Y/%m/%d/')
     objects = models.Manager()
