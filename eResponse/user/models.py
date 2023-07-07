@@ -1,7 +1,7 @@
 import json
 import os
-import eResponse
-
+from . import managers
+from eResponse import mixins
 from django.contrib.auth.models import (
     AbstractBaseUser,
     Group,
@@ -10,6 +10,7 @@ from django.contrib.auth.models import (
 from pathlib import Path
 from typing import Any, Callable, Union
 from django.core.exceptions import ValidationError
+from django.db.models.manager import Manager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
@@ -26,11 +27,17 @@ def avatars_path(instance: Any, filename: str) -> Union[str, Callable, Path]:
     return os.path.join(*["avatars", instance.email, "%Y/%m/%d", filename])
 
 
+def assign_group(instance: Any) -> Union[str, Callable]:
+    name = Group.objects.filter(name='experts')
+    if name.exists():
+        return name.get().name
+    raise  # todo experts DoesNotExist
+
+
 class User(
-    eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin,
-    AbstractBaseUser, PermissionsMixin,
+    mixins.TimeMixin, mixins.IDMixin, AbstractBaseUser, PermissionsMixin,
 ):
-    groups = models.ManyToManyField(Group, related_name='groups')
+    groups = models.ManyToManyField(Group, related_name='groups', default=assign_group)
     # not blank because every user belong to at least one group
 
     is_active = models.BooleanField(_('Active Status'), default=False)
@@ -39,15 +46,30 @@ class User(
     is_superuser = models.BooleanField(_("Superuser"), default=False)
     is_staff = models.BooleanField(_("Admin"), default=False)
 
-    title = models.CharField(_('Title'), max_length=128)
+    title = models.CharField(_('Title'), max_length=128, blank=True)
     email = models.EmailField(_('Email Address'), unique=True, max_length=255)
     name = models.CharField(_('Full Name'), max_length=128, blank=True)
-    mobile = PhoneNumberField()
+    mobile = PhoneNumberField(blank=True)
     certifications = models.ManyToManyField("Certification",
                                             related_name='certificates')
-    avatar = models.FileField(upload_to=avatars_path)
+    avatar = models.FileField(upload_to=avatars_path, blank=True)
 
-    objects = eResponse.user.managers.UserManager()
+    objects = managers.UserManager()
+
+    class UserQueryset(models.QuerySet):
+        def get_users(self):  # get all users
+            return self.prefetch_related('groups', 'certifications')
+
+        def get_experts(self):  # get all available users
+            return self.get_users().filter(is_available=1)
+
+        def get_managers(self):  # get all available managers
+            return self.get_experts().filter(groups__name__contains='managers')
+
+        def get_leads(self):  # get all available leads
+            return self.get_experts().filter(groups__name__contains='leads')
+
+    users: Union[UserQueryset, Manager] = UserQueryset.as_manager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []  # none, to allow frontend auth flow
@@ -73,7 +95,7 @@ class User(
         return reverse('user:detail', kwargs={'id': self.id})
 
     @classmethod
-    def from_api(cls, model: eResponse.user.FastAPI.schemas.UserSchema):
+    def from_api(cls, model):
         """
         returns a user instance from schema instance
         :param model:
@@ -95,7 +117,7 @@ class User(
             avatar=json_data['avatar'],
         )
 
-    def update_from_api(self, model: eResponse.user.FastAPI.schemas.UserSchema):
+    def update_from_api(self, model):
         """
         update user model with schema instance
         :return:
@@ -134,7 +156,7 @@ def cert_path(certificate: Any, filename: str) -> Union[str, Callable, Path]:
     )
 
 
-class Certification(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
+class Certification(mixins.TimeMixin, mixins.IDMixin):
     title = models.CharField(_("Title"), max_length=128, )
     description = models.TextField(_('Describe achievement'), max_length=555)
     # department = models.Choices  # todo confirm from operations
