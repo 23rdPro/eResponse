@@ -5,12 +5,15 @@ with at least one management level user.
 """
 
 import logging
-import eResponse
+import eResponse.mixins
 
 from django.db import models
-from django.contrib.auth import get_user_model
+# from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
+
+UserModel = settings.AUTH_USER_MODEL
 
 
 class Emergency(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
@@ -18,7 +21,7 @@ class Emergency(eResponse.mixins.TimeMixin, eResponse.mixins.IDMixin):
 
     # all users regardless of groups however a manager must instantiate
     # this model hence, cannot be blank
-    respondents = models.ManyToManyField(get_user_model(), related_name='experts')
+    respondents = models.ManyToManyField(UserModel, related_name='experts')
 
     # each emergency may have multiple briefs
     briefs = models.ManyToManyField("Brief", related_name='briefs')
