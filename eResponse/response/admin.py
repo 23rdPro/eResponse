@@ -1,12 +1,12 @@
 from django.contrib import admin
-from eResponse.response.models import Emergency, Brief
+from . import models
 
 
-@admin.register(Emergency)
+@admin.register(models.Emergency)
 class EmergencyAdmin(admin.ModelAdmin):
     list_display = 'id', 'severity'
 
 
-@admin.register(Brief)
+@admin.register(models.Brief)
 class BriefAdmin(admin.ModelAdmin):
     list_display = 'id', 'title'
