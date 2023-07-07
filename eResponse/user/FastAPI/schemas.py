@@ -1,8 +1,8 @@
 from typing import List
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.contrib.auth.models import Group
 from djantic import ModelSchema
-from eResponse.user.models import Certification
+from eResponse.user import models
 
 
 class GroupSchema(ModelSchema):
@@ -13,7 +13,10 @@ class GroupSchema(ModelSchema):
 
 class CertificationSchema(ModelSchema):
     class Config:
-        model = Certification
+        model = models.Certification
+
+
+UserModel = settings.AUTH_USER_MODEL
 
 
 class UserSchema(ModelSchema):
@@ -21,5 +24,5 @@ class UserSchema(ModelSchema):
     certificates = List[CertificationSchema]
 
     class Config:
-        model = get_user_model()
+        model = UserModel
 
