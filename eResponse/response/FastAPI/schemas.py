@@ -1,7 +1,7 @@
 from typing import List
 from djantic import ModelSchema
-from eResponse.response.models import Emergency, Brief, Picture, Video
-from eResponse.user.FastAPI.schema import UserSchema, GroupSchema
+from eResponse.response.models import Picture, Video, Brief, Emergency
+from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 
 
 class PictureSchema(ModelSchema):
@@ -15,8 +15,8 @@ class VideoSchema(ModelSchema):
 
 
 class BriefSchema(ModelSchema):
-    picture = List[PictureSchema]
-    videos = List[VideoSchema]
+    picture: List[PictureSchema] = List[PictureSchema]
+    videos: List[VideoSchema] = List[VideoSchema]
 
     class Config:
         model = Brief
