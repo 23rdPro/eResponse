@@ -1,5 +1,7 @@
 import json
 import os
+import typing
+
 from . import managers
 from eResponse import mixins
 from django.contrib.auth.models import (
@@ -27,31 +29,28 @@ def avatars_path(instance: Any, filename: str) -> Union[str, Callable, Path]:
     return os.path.join(*["avatars", instance.email, "%Y/%m/%d", filename])
 
 
-def assign_group(instance: Any) -> Union[str, Callable]:
-    name = Group.objects.filter(name='experts')
-    if name.exists():
-        return name.get().name
-    raise  # todo experts DoesNotExist
-
-
 class User(
     mixins.TimeMixin, mixins.IDMixin, AbstractBaseUser, PermissionsMixin,
 ):
-    groups = models.ManyToManyField(Group, related_name='groups', default=assign_group)
+    # admin status
+    is_superuser = models.BooleanField(_("Superuser"), default=False)
+    is_staff = models.BooleanField(_("Admin"), default=False)
+
+    groups = models.ManyToManyField(Group, related_name='groups')
     # not blank because every user belong to at least one group
 
     is_active = models.BooleanField(_('Active Status'), default=False)
     # active on this app, available to handle emergency
     is_available = models.BooleanField(_('Availability'), default=True)
-    is_superuser = models.BooleanField(_("Superuser"), default=False)
-    is_staff = models.BooleanField(_("Admin"), default=False)
 
+    # personal info
     title = models.CharField(_('Title'), max_length=128, blank=True)
     email = models.EmailField(_('Email Address'), unique=True, max_length=255)
     name = models.CharField(_('Full Name'), max_length=128, blank=True)
     mobile = PhoneNumberField(blank=True)
     certifications = models.ManyToManyField("Certification",
-                                            related_name='certificates')
+                                            related_name='certificates',
+                                            blank=True)
     avatar = models.FileField(upload_to=avatars_path, blank=True)
 
     objects = managers.UserManager()
@@ -61,7 +60,7 @@ class User(
             return self.prefetch_related('groups', 'certifications')
 
         def get_experts(self):  # get all available users
-            return self.get_users().filter(is_available=1)
+            return self.get_users().filter(is_available=True)
 
         def get_managers(self):  # get all available managers
             return self.get_experts().filter(groups__name__contains='managers')
@@ -95,13 +94,13 @@ class User(
         return reverse('user:detail', kwargs={'id': self.id})
 
     @classmethod
-    def from_api(cls, model):
+    def from_api(cls, schema):
         """
         returns a user instance from schema instance
-        :param model:
+        :param schema:
         :return:
         """
-        json_data = json.loads(model.json())
+        json_data = json.loads(schema.json())
         return cls(
             id=json_data['id'],
             groups=json_data['groups'],
@@ -145,6 +144,11 @@ class User(
     def from_qs(cls):
         pass
 
+    @classmethod
+    def exclude_fields(cls) -> typing.List:
+        return [field.name for field in cls._meta.get_fields()
+                if hasattr(field, 'blank') and field.blank is True]
+
 
 def cert_path(certificate: Any, filename: str) -> Union[str, Callable, Path]:
     return os.path.join(
@@ -160,4 +164,4 @@ class Certification(mixins.TimeMixin, mixins.IDMixin):
     title = models.CharField(_("Title"), max_length=128, )
     description = models.TextField(_('Describe achievement'), max_length=555)
     # department = models.Choices  # todo confirm from operations
-    upload = models.FileField(upload_to=cert_path, blank=True, null=True)
+    upload = models.FileField(upload_to=cert_path, blank=True, )
