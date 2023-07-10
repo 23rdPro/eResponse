@@ -1,6 +1,7 @@
 import json
 import os
 import typing
+from asgiref.sync import sync_to_async
 
 from . import managers
 from eResponse import mixins
@@ -13,7 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, Union
 from django.core.exceptions import ValidationError
 from django.db.models.manager import Manager
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 from phonenumber_field.modelfields import PhoneNumberField
