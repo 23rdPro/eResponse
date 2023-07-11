@@ -18,4 +18,4 @@ class CertificationSchema(ModelSchema):
 class UserSchema(ModelSchema):
     class Config:
         model = models.User
-        include = ['email', "name", ]
+        include = ['email', "password", ]
