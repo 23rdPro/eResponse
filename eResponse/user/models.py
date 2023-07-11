@@ -101,21 +101,26 @@ class User(
         :param schema:
         :return:
         """
-        json_data = json.loads(schema.json())
+        schema: dict = schema.dict()
         return cls(
-            id=json_data['id'],
-            groups=json_data['groups'],
-            is_active=json_data['is_active'],
-            is_staff=json_data['is_staff'],
-            is_available=json_data['is_available'],
-            is_superuser=json_data['is_superuser'],
-            title=json_data['title'],
-            email=json_data['email'],
-            name=json_data['name'],
-            mobile=json_data['mobile'],
-            certifications=json_data['certifications'],
-            avatar=json_data['avatar'],
+            email=schema.get('email', ''),
+            password=schema.get('password', '')
         )
+        # json_data = json.loads(schema.json())
+        # return cls(
+        #     id=json_data['id'],
+        #     groups=json_data['groups'],
+        #     is_active=json_data['is_active'],
+        #     is_staff=json_data['is_staff'],
+        #     is_available=json_data['is_available'],
+        #     is_superuser=json_data['is_superuser'],
+        #     title=json_data['title'],
+        #     email=json_data['email'],
+        #     name=json_data['name'],
+        #     mobile=json_data['mobile'],
+        #     certifications=json_data['certifications'],
+        #     avatar=json_data['avatar'],
+        # )
 
     def update_from_api(self, model):
         """
