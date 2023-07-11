@@ -13,10 +13,8 @@ router = APIRouter()
 
 router.get(
     '/users',
-    # dependencies=[Depends(oauth2_scheme)],
-    # responses={404: {"description": "Not found"}},
-    # response_model=schemas.UsersSchema,
-    tags=["users", "experts", ],
+    dependencies=[Depends(oauth2_scheme)],
+    tags=["users", ],
     summary="Retrieve all users",
     status_code=200,
 )(views.read_users)
@@ -26,3 +24,8 @@ router.post(
     status_code=200,
     summary="Post to user"
 )(views.create_user)
+
+router.get("/users/me", status_code=200, )(views.read_users_me)
+
+
+urlpatterns = []
