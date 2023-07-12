@@ -21,11 +21,12 @@ router.get(
 
 router.post(
     '/users',
+    tags=["users", ],
     status_code=200,
     summary="Post to user"
 )(views.create_user)
 
-router.get("/users/me", status_code=200, )(views.read_users_me)
+router.get("/users/me", status_code=200, tags=["users", ],)(views.read_users_me)
 
 
 urlpatterns = []
