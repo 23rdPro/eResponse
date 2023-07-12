@@ -11,6 +11,8 @@ credentials.json
 *.py[cod]
 *.sw[op]
 
+appinfo.log
+
 # C extensions
 *.so
 
