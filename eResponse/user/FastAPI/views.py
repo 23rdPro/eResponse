@@ -16,8 +16,11 @@ from django.views.decorators.http import require_http_methods, require_safe
 from django.views.decorators.csrf import csrf_protect
 from django.http import JsonResponse, HttpRequest
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth import authenticate, login as user_login
 
-from fastapi import Request, HTTPException, Depends, FastAPI, Response, File
+from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2PasswordRequestFormStrict
 # from eResponse.urls import router
 from eResponse.user import models
 
@@ -44,16 +47,36 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    users = await sync_to_async(list)(models.User.users.get_experts().filter(id=token))
-    assert len(users) == 1
-    user = users.pop()
+    user = await sync_to_async(models.User.users.get_users().filter(id=token))()
     try:
         user = models.User.objects.aget(user.id)
-    except Exception as Error:
+    except ObjectDoesNotExist or Exception as Error:
         logging.error(Error)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     finally:
-        return await sync_to_async(lambda: {"user": UserSchema.from_orm(user)})()
+        return await sync_to_async(lambda: {
+            "user": UserSchema.from_orm(user)})()
 
 
-async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_user)]):
+async def get_current_active_user(
+        current_user: Annotated[UserSchema, Depends(get_current_user)]
+):
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive User")
+
+    return current_user
+
+
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user = await sync_to_async(authenticate(email=form_data.email, password=form_data.password))()
+    if user is None:
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    return {"access_token": user.email, "token_type": "bearer"}
+
+
+async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
     return current_user
