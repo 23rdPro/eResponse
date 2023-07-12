@@ -46,8 +46,11 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
     return data
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(
+        token: Annotated[str, Depends(oauth2_scheme)]
+):
     user = await sync_to_async(models.User.users.get_users().filter(id=token))()
+
     try:
         user = models.User.objects.aget(user.id)
     except ObjectDoesNotExist or Exception as Error:
@@ -65,14 +68,22 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 async def get_current_active_user(
         current_user: Annotated[UserSchema, Depends(get_current_user)]
 ):
-    if not current_user.is_active:
+    data: UserSchema = await sync_to_async(lambda: current_user)()
+    if not sync_to_async(models.User.from_api(data).aget().is_active):
         raise HTTPException(status_code=400, detail="Inactive User")
+    return data
 
-    return current_user
+
+@sync_to_async
+def authenticate_user(email: str, password: str):
+    return authenticate(email=email, password=password)
 
 
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user = await sync_to_async(authenticate(email=form_data.email, password=form_data.password))()
+    form = await sync_to_async(lambda: form_data)()
+    print(form.password)
+    user = await authenticate_user(form.username, password=form.password)
+    print(user)
     if user is None:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     return {"access_token": user.email, "token_type": "bearer"}
