@@ -79,3 +79,5 @@ eResponse/event/auth.py
 eResponse/event/signals.py
 .gitignore
 media
+
+eEvent
