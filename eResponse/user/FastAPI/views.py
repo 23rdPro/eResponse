@@ -1,6 +1,6 @@
 import json
 import logging
-
+from rest_framework.authtoken.models import Token
 import eResponse
 import typing
 import httpx
@@ -46,23 +46,21 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
     return data
 
 
+@sync_to_async
 async def get_current_user(
         token: Annotated[str, Depends(oauth2_scheme)]
 ):
-    user = await sync_to_async(models.User.users.get_users().filter(id=token))()
+    user = await models.User.users.get_users().filter(id=token)
 
-    try:
-        user = models.User.objects.aget(user.id)
-    except ObjectDoesNotExist or Exception as Error:
-        logging.error(Error)
+    if not user.exists():
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    finally:
-        return await sync_to_async(lambda: {
-            "user": UserSchema.from_orm(user)})()
+
+    return await UserSchema.from_orm(user.aget())
 
 
 async def get_current_active_user(
@@ -81,12 +79,10 @@ def authenticate_user(email: str, password: str):
 
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     form = await sync_to_async(lambda: form_data)()
-    print(form.password)
-    user = await authenticate_user(form.username, password=form.password)
-    print(user)
+    user = await authenticate_user(form.username, form.password)
     if user is None:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
-    return {"access_token": user.email, "token_type": "bearer"}
+    return {"access_token": user.id, "token_type": "bearer"}
 
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
