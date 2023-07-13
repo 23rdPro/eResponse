@@ -91,3 +91,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
     return current_user
+
+
+async def delete_user_me():
+    pass
