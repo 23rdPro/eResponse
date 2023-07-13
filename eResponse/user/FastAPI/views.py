@@ -47,29 +47,37 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
 
 
 @sync_to_async
+def get_user_by_token(token: str):
+    return models.User.users.get_users().filter(id=token)
+
+
 async def get_current_user(
-        token: Annotated[str, Depends(oauth2_scheme)]
+        token: Annotated[str, Depends(oauth2_scheme)],
+
 ):
-    user = await models.User.users.get_users().filter(id=token)
+    user = await get_user_by_token(token)
 
-    if not user.exists():
+    if user.exists():
+        return await user.aget()
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return await UserSchema.from_orm(user.aget())
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_active_user(
         current_user: Annotated[UserSchema, Depends(get_current_user)]
 ):
-    data: UserSchema = await sync_to_async(lambda: current_user)()
-    if not sync_to_async(models.User.from_api(data).aget().is_active):
+    if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive User")
-    return data
+    return current_user
+
+    # data: UserSchema = await sync_to_async(lambda: current_user)()
+    # if not sync_to_async(models.User.from_api(data).aget().is_active):
+    #     raise HTTPException(status_code=400, detail="Inactive User")
+    # return data
 
 
 @sync_to_async
@@ -77,12 +85,11 @@ def authenticate_user(email: str, password: str):
     return authenticate(email=email, password=password)
 
 
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    form = await sync_to_async(lambda: form_data)()
+async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = await authenticate_user(form.username, form.password)
     if user is None:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
-    return {"access_token": user.id, "token_type": "bearer"}
+    return {"access_token": user.email, "token_type": "bearer"}
 
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
