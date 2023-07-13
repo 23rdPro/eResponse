@@ -33,6 +33,7 @@ def avatars_path(instance: Any, filename: str) -> Union[str, Callable, Path]:
 class User(
     mixins.TimeMixin, mixins.IDMixin, AbstractBaseUser, PermissionsMixin,
 ):
+    # token = models.CharField()
     # admin status
     is_superuser = models.BooleanField(_("Superuser"), default=False)
     is_staff = models.BooleanField(_("Admin"), default=False)
