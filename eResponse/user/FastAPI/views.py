@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import json
 import logging
+from datetime import timedelta, datetime
+
 from rest_framework.authtoken.models import Token
 import eResponse
+import os
 import typing
 import httpx
 import uuid
@@ -9,7 +14,10 @@ import asyncio
 from asgiref.sync import sync_to_async
 from typing import List, Dict, Coroutine, Union, Tuple, Annotated
 
+
 from djantic import ModelSchema
+from jose import jwt
+
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -27,7 +35,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OA
 from eResponse.user import models as user_models
 
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
-from eResponse import oauth2_scheme
+from eResponse import oauth2_scheme, pwd_context, ALGORITHM, API_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 URL = ""
@@ -55,10 +63,28 @@ def get_user_by_token(token: str):
     return None
 
 
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta is not None:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
 async def get_current_user(
         token: Annotated[str, Depends(oauth2_scheme)],
 
 ):
+    http_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    # try:
+    #     payload = ''
     user = await get_user_by_token(token)
     if user is not None:
         return user
@@ -83,6 +109,11 @@ def authenticate_user(email: str, password: str):
     return authenticate(email=email, password=password)
 
 
+@sync_to_async
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
 async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = await authenticate_user(form.username, form.password)
     if user is None:
@@ -99,7 +130,3 @@ def to_schema(model: models, schema: ModelSchema, many=False):
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
     return await to_schema(current_user, UserSchema)
-
-
-async def delete_user_me():
-    pass
