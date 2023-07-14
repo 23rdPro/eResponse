@@ -62,7 +62,7 @@ class User(
             return self.prefetch_related('groups', 'certifications')
 
         def get_experts(self):  # get all available users
-            return self.get_users().filter(is_available=True)
+            return self.get_users().afilter(is_available=True)
 
         def get_managers(self):  # get all available managers
             return self.get_experts().filter(groups__name__contains='managers')
