@@ -22,11 +22,3 @@ class UserSchema(ModelSchema):
         model = models.User
         include = ['email', "password", ]
 
-
-class TokenSchema(ModelSchema):
-    access_token: str
-    token_type: str
-
-
-class TokenData(ModelSchema):
-    email: str
