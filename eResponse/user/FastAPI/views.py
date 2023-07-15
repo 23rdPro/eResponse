@@ -16,7 +16,7 @@ from typing import List, Dict, Coroutine, Union, Tuple, Annotated
 
 
 from djantic import ModelSchema
-from jose import jwt
+from jose import jwt, JWTError
 
 
 from django.conf import settings
@@ -56,44 +56,35 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
 
 
 @sync_to_async
-def get_user_by_token(token: str):
+def get_user_from_token(token: str):
     user = user_models.User.users.get_users().filter(email=token)
     if user.exists():
         return user.get()
     return None
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta is not None:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-async def get_current_user(
-        token: Annotated[str, Depends(oauth2_scheme)],
-
-):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     http_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    # try:
-    #     payload = ''
-    user = await get_user_by_token(token)
+
+    try:
+        payload = jwt.decode(token, API_SECRET_KEY, algorithms=[ALGORITHM])
+        print("Payload>>>>>>>>>>>>>>:{0}".format(payload))
+        email = payload.get("sub")
+        if email is None:
+            raise http_exception
+
+    except JWTError:
+        raise http_exception
+
+    user = await get_user_from_token(email)
     if user is not None:
         return user
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid authentication credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    raise http_exception
 
 
 async def get_current_active_user(
@@ -114,11 +105,29 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta is not None:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
 async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    http_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect email or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     user = await authenticate_user(form.username, form.password)
     if user is None:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    return {"access_token": user.email, "token_type": "bearer"}
+        raise http_exception
+    token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token({"sub": user.email}, expires_delta=token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @sync_to_async
