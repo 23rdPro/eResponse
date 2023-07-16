@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'eResponse.response',
     'eResponse.user',
     'eResponse.core',
+    'eResponse.auth_token',
 
 
 ]
