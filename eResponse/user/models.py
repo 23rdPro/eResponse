@@ -1,7 +1,6 @@
 import json
 import os
 import typing
-from asgiref.sync import sync_to_async
 
 from . import managers
 from eResponse import mixins
@@ -172,3 +171,7 @@ class Certification(mixins.TimeMixin, mixins.IDMixin):
     description = models.TextField(_('Describe achievement'), max_length=555)
     # department = models.Choices  # todo confirm from operations
     upload = models.FileField(upload_to=cert_path, blank=True, )
+
+
+
+
