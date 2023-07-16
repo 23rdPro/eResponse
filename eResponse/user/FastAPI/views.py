@@ -33,10 +33,13 @@ from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, st
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2PasswordRequestFormStrict
 # from eResponse.urls import router
 from eResponse.user import models as user_models
+from eResponse.auth_token import models as auth_token_models
+from eResponse.auth_token.FastAPI import schema as auth_token_schema
 
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 from eResponse import oauth2_scheme, pwd_context, ALGORITHM, API_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
 
+from .utils import create_access_token
 
 URL = ""
 
@@ -59,8 +62,13 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
 def get_user_from_token(token: str):
     user = user_models.User.users.get_users().filter(email=token)
     if user.exists():
-        return user.get()
+        return user.aget()
     return None
+
+
+@sync_to_async
+def get_payload(token, secret, algorithms=None):
+    pass
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -69,22 +77,27 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         detail="Invalid authentication credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
+    user = None
     try:
         payload = jwt.decode(token, API_SECRET_KEY, algorithms=[ALGORITHM])
         print("Payload>>>>>>>>>>>>>>:{0}".format(payload))
         email = payload.get("sub")
-        if email is None:
+        print(email)
+        user = await get_user_from_token(email)
+        if email is None or user is None:
             raise http_exception
 
-    except JWTError:
+    except JWTError or Exception as Err:
+        print("Error>>>>>>>>", Err)
         raise http_exception
-
-    user = await get_user_from_token(email)
-    if user is not None:
+    finally:
         return user
 
-    raise http_exception
+    # user = await get_user_from_token(email)
+    # if user is not None:
+    #     return user
+    #
+    # raise http_exception
 
 
 async def get_current_active_user(
@@ -105,15 +118,10 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta is not None:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+@sync_to_async
+def to_schema(model: models, schema: ModelSchema, many=False):
+    return schema.from_orm(model) if not many else \
+        schema.from_django(model, many=True)
 
 
 async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
@@ -122,19 +130,22 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
         detail="Incorrect email or password",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     user = await authenticate_user(form.username, form.password)
     if user is None:
         raise http_exception
-    token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token({"sub": user.email}, expires_delta=token_expires)
-    return {"access_token": access_token, "token_type": "bearer"}
 
+    token_expires = await sync_to_async(lambda: timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES)))()
+    # token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = await create_access_token({"sub": user.email}, expires_delta=token_expires)
 
-@sync_to_async
-def to_schema(model: models, schema: ModelSchema, many=False):
-    if not many:
-        return schema.from_orm(model)
-    return schema.from_django(model, many=True)
+    auth_token = await sync_to_async(lambda: auth_token_models.Token.objects.select_related("user").filter(user=user.id))()
+    if await auth_token.aexists():
+        await auth_token.aupdate(access_token=access_token)
+    else:
+        auth_token = await sync_to_async(lambda: auth_token_models.Token.objects.create(access_token=access_token, user=user))()
+    # print(auth_token, "auth_token>>>>>>>>>>>")
+    return await to_schema(auth_token, auth_token_schema.TokenSchema)
 
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
