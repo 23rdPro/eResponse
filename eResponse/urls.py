@@ -26,9 +26,9 @@ router.post(
     summary="Post to user"
 )(views.create_user)
 
-router.get("/users/me", status_code=200, tags=["users", ],)(views.read_users_me)
-
 router.post("/token", status_code=200, tags=["users"])(views.login)
+
+router.get("/users/me", status_code=200, tags=["users", ],)(views.read_users_me)
 
 
 urlpatterns = []
