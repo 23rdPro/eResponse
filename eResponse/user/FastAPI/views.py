@@ -60,10 +60,25 @@ async def read_users() -> Dict[str, List]:
     return {"users": users}
 
 
-async def create_user(schema_type: UserSchema) -> UserSchema:
-    data: UserSchema = await sync_to_async(lambda: schema_type)()
-    await sync_to_async(lambda: user_models.User.from_api(data).save())()
-    return data
+@sync_to_async
+def from_schema(model: models, schema: ModelSchema) -> None:
+    """
+    create model instance from response schema
+    :param model:
+    :param schema:
+    :return:
+    """
+    instance = model.from_api(**schema.dict())
+    try:
+        instance.save()
+    except Exception as Error:
+        raise Error
+    return
+
+
+async def create_user(user: UserSchema):
+    await from_schema(user_models.User, user)
+    return user
 
 
 @sync_to_async
@@ -144,3 +159,18 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
     return await to_schema(current_user, UserSchema)
+
+
+@sync_to_async
+def get_user_by_id(user_id: str):
+    user = user_models.User.objects.filter(id=user_id)
+    if user.exists():
+        return user.get()
+    return None
+
+
+async def get_user(user_id):
+    user = await get_user_by_id(user_id)
+    if user is not None:
+        return await to_schema(user, UserSchema)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
