@@ -44,12 +44,20 @@ from .utils import create_access_token
 URL = ""
 
 
+@sync_to_async
+def to_schema(model: models, schema: ModelSchema, many=False) -> ModelSchema:
+    if isinstance(model, models.query.QuerySet) and len(model) == 1:
+        model.get()
+    return schema.from_orm(model) if not many else \
+        schema.from_django(model, many=True)
+
+
 async def read_users() -> Dict[str, List]:
     queryset: Union[Tuple, Coroutine] = await sync_to_async(tuple)(
         user_models.User.users.get_users())
 
-    return await sync_to_async(lambda: {
-        "users": UserSchema.from_django(queryset, many=True)})()
+    users = await to_schema(queryset, UserSchema, many=True)
+    return {"users": users}
 
 
 async def create_user(schema_type: UserSchema) -> UserSchema:
@@ -62,13 +70,8 @@ async def create_user(schema_type: UserSchema) -> UserSchema:
 def get_user_from_token(token: str):
     user = user_models.User.users.get_users().filter(email=token)
     if user.exists():
-        return user.aget()
+        return user.get()
     return None
-
-
-@sync_to_async
-def get_payload(token, secret, algorithms=None):
-    pass
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -77,27 +80,18 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         detail="Invalid authentication credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    user = None
     try:
-        payload = jwt.decode(token, API_SECRET_KEY, algorithms=[ALGORITHM])
-        print("Payload>>>>>>>>>>>>>>:{0}".format(payload))
-        email = payload.get("sub")
-        print(email)
-        user = await get_user_from_token(email)
-        if email is None or user is None:
+        payload = await sync_to_async(lambda: jwt.decode(token, API_SECRET_KEY, algorithms=[ALGORITHM]))()
+        email: str = payload.get("sub")
+        if email is None:
             raise http_exception
-
-    except JWTError or Exception as Err:
-        print("Error>>>>>>>>", Err)
+    except JWTError:
         raise http_exception
-    finally:
-        return user
 
-    # user = await get_user_from_token(email)
-    # if user is not None:
-    #     return user
-    #
-    # raise http_exception
+    user = await get_user_from_token(email)
+    if user is None:
+        raise http_exception
+    return user
 
 
 async def get_current_active_user(
@@ -119,9 +113,14 @@ def verify_password(plain_password, hashed_password):
 
 
 @sync_to_async
-def to_schema(model: models, schema: ModelSchema, many=False):
-    return schema.from_orm(model) if not many else \
-        schema.from_django(model, many=True)
+def login_token_async(user, access_token):
+    auth_token = auth_token_models.Token.objects.select_related("user").filter(user=user.id)
+    if auth_token.exists():
+        auth_token.update(access_token=access_token)
+        auth_token = auth_token.get()
+    else:
+        auth_token = auth_token_models.Token.objects.create(access_token=access_token, user=user)
+    return auth_token
 
 
 async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
@@ -136,15 +135,10 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
         raise http_exception
 
     token_expires = await sync_to_async(lambda: timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES)))()
-    # token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
     access_token = await create_access_token({"sub": user.email}, expires_delta=token_expires)
 
-    auth_token = await sync_to_async(lambda: auth_token_models.Token.objects.select_related("user").filter(user=user.id))()
-    if await auth_token.aexists():
-        await auth_token.aupdate(access_token=access_token)
-    else:
-        auth_token = await sync_to_async(lambda: auth_token_models.Token.objects.create(access_token=access_token, user=user))()
-    # print(auth_token, "auth_token>>>>>>>>>>>")
+    auth_token = await login_token_async(user, access_token)
+
     return await to_schema(auth_token, auth_token_schema.TokenSchema)
 
 
