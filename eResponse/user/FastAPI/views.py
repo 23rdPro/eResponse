@@ -12,7 +12,7 @@ import httpx
 import uuid
 import asyncio
 from asgiref.sync import sync_to_async
-from typing import List, Dict, Coroutine, Union, Tuple, Annotated
+from typing import List, Dict, Coroutine, Union, Tuple, Annotated, Any
 
 
 from djantic import ModelSchema
@@ -26,10 +26,12 @@ from django.views.decorators.http import require_http_methods, require_safe
 from django.views.decorators.csrf import csrf_protect
 from django.http import JsonResponse, HttpRequest
 from django.db import transaction, models
+from django.db.models.query import QuerySet
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth import authenticate, login as user_login
 
 from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2PasswordRequestFormStrict
 # from eResponse.urls import router
 from eResponse.user import models as user_models
@@ -45,19 +47,10 @@ URL = ""
 
 
 @sync_to_async
-def to_schema(model: models, schema: ModelSchema, many=False) -> ModelSchema:
-    if isinstance(model, models.query.QuerySet) and len(model) == 1:
-        model.get()
-    return schema.from_orm(model) if not many else \
-        schema.from_django(model, many=True)
-
-
-async def read_users() -> Dict[str, List]:
-    queryset: Union[Tuple, Coroutine] = await sync_to_async(tuple)(
-        user_models.User.users.get_users())
-
-    users = await to_schema(queryset, UserSchema, many=True)
-    return {"users": users}
+def to_schema(django_obj: Any[models, QuerySet], schema: ModelSchema):
+    if hasattr(django_obj, "count"):  # queryset.count
+        return schema.from_django(django_obj, many=True)
+    return schema.from_orm(django_obj)
 
 
 @sync_to_async
@@ -68,7 +61,7 @@ def from_schema(model: models, schema: ModelSchema) -> None:
     :param schema:
     :return:
     """
-    instance = model.from_api(**schema.dict())
+    instance = model.from_api(schema)
     try:
         instance.save()
     except Exception as Error:
@@ -76,9 +69,14 @@ def from_schema(model: models, schema: ModelSchema) -> None:
     return
 
 
-async def create_user(user: UserSchema):
-    await from_schema(user_models.User, user)
-    return user
+@sync_to_async
+def authenticate_user(email: str, password: str):
+    return authenticate(email=email, password=password)
+
+
+@sync_to_async
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 @sync_to_async
@@ -87,6 +85,41 @@ def get_user_from_token(token: str):
     if user.exists():
         return user.get()
     return None
+
+
+@sync_to_async
+def get_all_users():
+    return user_models.User.users.get_users()
+
+
+@sync_to_async
+def filter_user_by_id(user_id: str):
+    user = user_models.User.objects.filter(id=user_id)
+    if user.exists():
+        return user.get()
+    return None
+
+
+@sync_to_async
+def login_token_async(user, access_token):
+    auth_token = auth_token_models.Token.objects.select_related("user").filter(user=user.id)
+    if auth_token.exists():
+        auth_token.update(access_token=access_token)
+        return auth_token.get()
+    return auth_token_models.Token.objects.create(access_token=access_token, user=user)
+
+
+@sync_to_async
+def get_user(**kwargs):
+    user = user_models.User.objects.filter(**kwargs)
+    if user.exists():
+        return user.get()
+    return
+
+
+async def create_user(user: UserSchema):
+    await from_schema(user_models.User, user)
+    return user
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -117,25 +150,7 @@ async def get_current_active_user(
     raise HTTPException(status_code=400, detail="Inactive User")
 
 
-@sync_to_async
-def authenticate_user(email: str, password: str):
-    return authenticate(email=email, password=password)
-
-
-@sync_to_async
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-@sync_to_async
-def login_token_async(user, access_token):
-    auth_token = auth_token_models.Token.objects.select_related("user").filter(user=user.id)
-    if auth_token.exists():
-        auth_token.update(access_token=access_token)
-        auth_token = auth_token.get()
-    else:
-        auth_token = auth_token_models.Token.objects.create(access_token=access_token, user=user)
-    return auth_token
+CurrentActiveUser = Annotated[UserSchema, Depends(get_current_active_user)]
 
 
 async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
@@ -144,7 +159,6 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
         detail="Incorrect email or password",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
     user = await authenticate_user(form.username, form.password)
     if user is None:
         raise http_exception
@@ -161,16 +175,21 @@ async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_
     return await to_schema(current_user, UserSchema)
 
 
-@sync_to_async
-def get_user_by_id(user_id: str):
-    user = user_models.User.objects.filter(id=user_id)
-    if user.exists():
-        return user.get()
-    return None
+async def read_users():
+    users = await get_all_users()
+    return await to_schema(users, UserSchema)
 
 
-async def get_user(user_id):
-    user = await get_user_by_id(user_id)
+async def get_user_by_id(user_id: str):
+    user = await filter_user_by_id(user_id)
     if user is not None:
         return await to_schema(user, UserSchema)
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
+
+
+async def update_user(user: UserSchema, user_id: str):
+    return user
+
+
+async def delete_user(*, user: CurrentActiveUser, ):
+    pass
