@@ -20,8 +20,14 @@ router.get('/users', dependencies=[Depends(oauth2_scheme)],
            summary="retrieve all users",
            status_code=status.HTTP_200_OK)(views.read_users)
 
-# router.post('/users', status_code=status.HTTP_201_CREATED,
-#             summary="create user")(views.create_user)
+router.post('/users', status_code=status.HTTP_201_CREATED,
+            summary="create user")(views.create_user)
+
+router.delete("/users/{user_id}", summary="delete current user",
+              status_code=status.HTTP_204_NO_CONTENT,
+              )(views.delete_user)
+
+
 #
 #
 # router.get("/users/me", status_code=200, tags=["users", ]
