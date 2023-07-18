@@ -17,7 +17,14 @@ class CertificationSchema(ModelSchema):
         include = ['title', 'description', 'upload']
 
 
+class UserRegistrationSchema(ModelSchema):
+    class Config:
+        model = models.User
+        include = ["email", "password"]
+
+
 class UserSchema(ModelSchema):
+    is_active: bool
     groups: typing.List[GroupSchema]
     certifications: typing.List[CertificationSchema]
     # avatar: typing.Optional[str] = None todo
