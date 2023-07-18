@@ -102,9 +102,11 @@ class User(
         :return:
         """
         schema: dict = schema.dict()
+        password = schema.get('password', '')
+        password = cls.set_password(password)
         return cls(
             email=schema.get('email', ''),
-            password=schema.get('password', '')
+            password=password
         )
         # json_data = json.loads(schema.json())
         # return cls(
