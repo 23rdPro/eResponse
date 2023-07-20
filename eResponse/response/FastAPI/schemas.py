@@ -7,6 +7,7 @@ from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 class PictureSchema(ModelSchema):
     class Config:
         model = Picture
+        include = ["__annotations__"]
 
 
 class VideoSchema(ModelSchema):
