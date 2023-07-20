@@ -32,6 +32,7 @@ from django.contrib.auth import authenticate, login as user_login
 
 from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, status
 from fastapi.responses import RedirectResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2PasswordRequestFormStrict
 # from eResponse.urls import router
 from eResponse.user import models as user_models
@@ -44,7 +45,7 @@ from eResponse import oauth2_scheme, pwd_context, ALGORITHM, API_SECRET_KEY, ACC
 from .utils import (
     create_access_token, create_user_sync, get_user_from_token,
     authenticate_user, login_token_async, to_schema, get_all_users,
-    filter_user_by_id, jwt_decode
+    filter_user_by_id, jwt_decode, update_user_sync,
 )
 
 URL = ""
@@ -85,14 +86,21 @@ async def get_current_active_user(
         status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive User")
 
 
+async def logout(current_user: Depends(get_current_active_user)):
+    pass
+
+
 async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
     http_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Incorrect email or password",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    is_active = await get_user_from_token(form.username)
+    if is_active is not None and not is_active.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+
     user = await authenticate_user(form.username, form.password)
-    print("Here>>>>>>>>>>>>>>", user)
     if user is None:
         raise http_exception
 
@@ -113,7 +121,7 @@ async def read_users():
     return await to_schema(users, UserSchema)
 
 
-async def get_user_by_id(user_id: str):
+async def get_user(user_id: str):
     user = await filter_user_by_id(user_id)
     if user is not None:
         return await to_schema(user, UserSchema)
@@ -121,14 +129,18 @@ async def get_user_by_id(user_id: str):
 
 
 async def update_user(user: UserSchema, user_id: str):
-    return user
+    curr_user = await filter_user_by_id(user_id)
+    schema = await sync_to_async(lambda: UserSchema.from_orm(curr_user))()
+    update_data = await sync_to_async(lambda: user.dict(exclude_unset=True))()
+    updated_user = await sync_to_async(lambda: schema.copy(update=update_data))()
+    await update_user_sync(curr_user, updated_user)
+    return updated_user
 
 
-async def delete_user(*, curr_user: Annotated[UserSchema, Depends(get_current_user)], user_id: str):
+async def delete_user(*, user_id: str):
     user = await filter_user_by_id(user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
-    assert hasattr(user, 'delete')
+    # assert hasattr(user, 'delete')  test
     await sync_to_async(lambda: user.delete())()
-    return
-
+    return {"ok": True}
