@@ -60,6 +60,13 @@ def create_user_sync(**kwargs):
 
 
 @sync_to_async
+def update_user_sync(user: models, schema):
+    user.update(**schema.dict())
+    user.save()
+    return user
+
+
+@sync_to_async
 def authenticate_user(email: str, password: str):
     return authenticate(email=email, password=password)
 
@@ -72,7 +79,6 @@ def verify_password(plain_password, hashed_password):
 @sync_to_async
 def get_user_from_token(token: str):
     user = user_models.User.users.get_users().filter(email=token)
-    assert user.count() == 1
     if user.exists():
         return user.get()
     return None
