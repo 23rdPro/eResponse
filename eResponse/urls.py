@@ -9,8 +9,10 @@ from eResponse.user import UserType
 from eResponse.user.FastAPI import views, schemas
 from eResponse.user import models
 
+from eResponse.response.FastAPI.views import start_emergency_response, get_emergency_response
 
-tags = ["users", "authentication"]
+
+tags = ["users",]
 router = APIRouter(tags=tags)
 
 router.post("/token", status_code=status.HTTP_200_OK,
@@ -33,6 +35,8 @@ router.patch("/users/{user_id}", status_code=status.HTTP_200_OK)(views.update_us
 router.delete("/users/{user_id}", summary="delete current user",
               status_code=status.HTTP_204_NO_CONTENT,
               )(views.delete_user)
+
+router.get("/response", status_code=status.HTTP_200_OK)(get_emergency_response)
 
 
 urlpatterns = []
