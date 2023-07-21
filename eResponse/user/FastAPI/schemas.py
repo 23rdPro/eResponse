@@ -23,10 +23,6 @@ class UserRegistrationSchema(ModelSchema):
         include = ["email", "password"]
 
 
-class AvatarSchema(ModelSchema):
-    pass  # todo
-
-
 class UserSchema(ModelSchema):
     is_active: bool
     groups: typing.List[GroupSchema]
