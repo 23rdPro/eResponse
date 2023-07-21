@@ -7,25 +7,30 @@ from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 class PictureSchema(ModelSchema):
     class Config:
         model = Picture
-        include = ["__annotations__"]
+        include = "__annotations__"
 
 
 class VideoSchema(ModelSchema):
     class Config:
         model = Video
+        include = "__annotations__"
 
 
 class BriefSchema(ModelSchema):
-    picture: List[PictureSchema] = List[PictureSchema]
-    videos: List[VideoSchema] = List[VideoSchema]
+    pictures: List[PictureSchema]
+    videos: List[VideoSchema]
+    reporter: UserSchema
 
     class Config:
         model = Brief
+        include = ["reporter", "title", "text", "pictures", "videos"]
 
 
 class EmergencySchema(ModelSchema):
-    type: List[GroupSchema]
+    emergency_type: GroupSchema
     respondents: List[UserSchema]
+    briefs: List[BriefSchema]
 
     class Config:
         model = Emergency
+        include = ["emergency_type", "respondents", "briefs", "severity"]
