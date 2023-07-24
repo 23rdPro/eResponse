@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
@@ -17,7 +18,16 @@ class Token(mixins.TimeMixin):
         settings.AUTH_USER_MODEL, related_name='auth_token',
         on_delete=models.CASCADE, verbose_name=_("User"))
 
+    class TokenQuerySet(models.QuerySet):
+        def filter_by_fields(self, **kwargs):
+            return self.filter(
+                Q(access_token=kwargs.pop("access_token"))
+                &
+                Q(user__id=kwargs.pop("user__id"))
+            )
+
     objects = models.Manager()
+    filters = TokenQuerySet.as_manager()
 
     class Meta:
         verbose_name = "Token"
