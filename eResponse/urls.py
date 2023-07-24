@@ -30,6 +30,8 @@ router.post('/users', status_code=status.HTTP_201_CREATED,
 router.get("/users/me", status_code=200, tags=users,
            )(views.read_users_me)
 
+router.post("/users/me/activate", status_code=status.HTTP_200_OK, tags=users)(views.activate_user)
+
 router.get("/users/{user_id}", status_code=status.HTTP_200_OK, tags=users)(views.get_user)
 
 router.patch("/users/{user_id}", status_code=status.HTTP_200_OK, tags=users)(views.update_user)
