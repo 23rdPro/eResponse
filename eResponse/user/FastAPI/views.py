@@ -45,7 +45,7 @@ from eResponse import oauth2_scheme, pwd_context, ALGORITHM, API_SECRET_KEY, ACC
 from .utils import (
     create_access_token, create_user_sync, get_user_from_token,
     authenticate_user, login_token_async, to_schema, get_all_users,
-    filter_user_by_id, jwt_decode, update_user_sync,
+    filter_user_by_id, jwt_decode, update_user_sync, activate_user_sync
 )
 
 URL = ""
@@ -110,6 +110,11 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
     auth_token = await login_token_async(user, access_token)
 
     return await to_schema(auth_token, auth_token_schema.TokenSchema)
+
+
+async def activate_user(curr_user: Annotated[UserSchema, Depends(get_current_active_user)], token: str):  # todo
+    is_activated = await activate_user_sync(curr_user, token)
+    return {"is_activated": is_activated}
 
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
