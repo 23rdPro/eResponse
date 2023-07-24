@@ -20,7 +20,7 @@ class CertificationSchema(ModelSchema):
 class UserRegistrationSchema(ModelSchema):
     class Config:
         model = models.User
-        include = ["email", "password"]
+        include = ["email", "id"]
 
 
 class UserSchema(ModelSchema):
@@ -31,7 +31,7 @@ class UserSchema(ModelSchema):
 
     class Config:
         model = models.User
-        include = ['email', "password", "name", "is_active",
+        include = ['id', 'email', "name", "is_active",
                    "is_superuser", "is_staff", "groups",
                    "is_available", "title", "mobile",
                    "certifications", ]
