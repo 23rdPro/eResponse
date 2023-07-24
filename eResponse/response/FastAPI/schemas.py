@@ -7,13 +7,13 @@ from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 class PictureSchema(ModelSchema):
     class Config:
         model = Picture
-        include = "__annotations__"
+        include = ["id", "file"]
 
 
 class VideoSchema(ModelSchema):
     class Config:
         model = Video
-        include = "__annotations__"
+        include = ["id", "file"]
 
 
 class BriefSchema(ModelSchema):
@@ -23,7 +23,7 @@ class BriefSchema(ModelSchema):
 
     class Config:
         model = Brief
-        include = ["reporter", "title", "text", "pictures", "videos"]
+        include = ["id", "reporter", "title", "text", "pictures", "videos"]
 
 
 class EmergencySchema(ModelSchema):
@@ -33,4 +33,4 @@ class EmergencySchema(ModelSchema):
 
     class Config:
         model = Emergency
-        include = ["emergency_type", "respondents", "briefs", "severity"]
+        include = ["id", "emergency_type", "respondents", "briefs", "severity"]
