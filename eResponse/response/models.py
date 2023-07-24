@@ -17,7 +17,7 @@ UserModel = settings.AUTH_USER_MODEL
 
 
 class Emergency(mixins.TimeMixin, mixins.IDMixin):
-    emergency_type = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='type')
+    emergency_type = models.OneToOneField(Group, on_delete=models.CASCADE, related_name='type')
     # synthetic and natural emergencies
 
     # all users regardless of group however a manager must instantiate
@@ -81,10 +81,10 @@ class Brief(mixins.TimeMixin, mixins.IDMixin):
 
 
 class Picture(mixins.TimeMixin, mixins.IDMixin):
-    picture = models.FileField(upload_to='photos/%Y/%m/%d/')
+    file = models.FileField(upload_to='photos/%Y/%m/%d/')
     objects = models.Manager()
 
 
 class Video(mixins.TimeMixin, mixins.IDMixin):
-    video = models.FileField(upload_to='videos/%Y/%m/%d/')
+    file = models.FileField(upload_to='videos/%Y/%m/%d/')
     objects = models.Manager()
