@@ -18,16 +18,10 @@ class TokenSchema(ModelSchema):
         include = ["token_type", "access_token", "user"]
 
 
-@dataclass
 class TokenModel(BaseModel):
     """
     pydantic, not djantic for token schema to avoid storing jwt in the db
     """
-    token_type: str = "bearer"
+    token_type: str
     access_token: str
     user_id: str
-
-    class Config:
-        validate_assignment = True
-
-    # @
