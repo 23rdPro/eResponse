@@ -1,29 +1,24 @@
 from typing import List
 from djantic import ModelSchema
-from eResponse.response.models import Picture, Video, Brief, Emergency
+from eResponse.response.models import File, Brief, Emergency
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 
 
-class PictureSchema(ModelSchema):
-    class Config:
-        model = Picture
-        include = ["id", "file"]
+class FileSchema(ModelSchema):
+    file: str
 
-
-class VideoSchema(ModelSchema):
     class Config:
-        model = Video
+        model = File
         include = ["id", "file"]
 
 
 class BriefSchema(ModelSchema):
-    pictures: List[PictureSchema]
-    videos: List[VideoSchema]
-    reporter: UserSchema
+    files: List[FileSchema]
+    # reporter: UserSchema
 
     class Config:
         model = Brief
-        include = ["id", "reporter", "title", "text", "pictures", "videos"]
+        include = ["id", "title", "text", "files"]
 
 
 class EmergencySchema(ModelSchema):
