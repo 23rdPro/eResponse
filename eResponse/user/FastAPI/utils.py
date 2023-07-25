@@ -13,16 +13,28 @@ from eResponse.user import models as user_models
 from eResponse.auth_token import models as auth_token_models
 
 
+# @sync_to_async
+# def create_access_token(data: dict, expires_delta: timedelta | None = None):
+#     to_encode = data.copy()
+#     if expires_delta is not None:
+#         expire = datetime.utcnow() + expires_delta
+#     else:
+#         expire = datetime.utcnow() + timedelta(minutes=15)
+#     to_encode.update({"exp": expire})
+#     encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
+#     return encoded_jwt
+
+
 @sync_to_async
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
+def create_access_token_sync(data: dict, expires_delta: timedelta | None = None):
+    encode = data.copy()
     if expires_delta is not None:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+        expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+    encode.update({"exp": expire})
+    encoded = jwt.encode(encode, API_SECRET_KEY, algorithm=ALGORITHM)
+    return encoded
 
 
 @sync_to_async
@@ -60,6 +72,25 @@ def create_user_sync(**kwargs):
 
 
 @sync_to_async
+def get_object_token(token: str):
+    print(token)
+
+
+@sync_to_async
+def activate_user_sync(user: user_models.User, token):
+    assert auth_token_models.Token.objects.filter(user__id=user.id).exists()
+    assert auth_token_models.Token.filters.filter_by_fields()
+    """
+    user regitsers
+    comes back procedure
+    """
+    assert user_models.User.objects.filter(id=user.id).exists()
+    user.is_active = True
+    user.save()
+    return user.is_active is True
+
+
+@sync_to_async
 def update_user_sync(user: models, schema):
     user.update(**schema.dict())
     user.save()
@@ -68,7 +99,8 @@ def update_user_sync(user: models, schema):
 
 @sync_to_async
 def authenticate_user(email: str, password: str):
-    return authenticate(email=email, password=password)
+    user = authenticate(email=email, password=password)
+    return user if user else None
 
 
 @sync_to_async
@@ -107,7 +139,15 @@ def login_token_async(user, access_token):
 
 
 @sync_to_async
-def get_user(**kwargs):
+def get_user_from_payload(payload: dict):
+    email = payload.get("sub")
+    user = user_models.User.users.get_users().filter(email=email).distinct()
+    user.update(is_active=True)
+    return user.get()
+
+
+@sync_to_async
+def get_user_sync(**kwargs):
     user = user_models.User.objects.filter(**kwargs)
     if user.exists():
         return user.get()
