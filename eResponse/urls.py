@@ -9,7 +9,13 @@ from eResponse.user import UserType
 from eResponse.user.FastAPI import views, schemas
 from eResponse.user import models
 
-from eResponse.response.FastAPI.views import start_emergency_response, get_emergency_response
+from eResponse.response.FastAPI.views import (
+    start_emergency_response,
+    get_emergency_response,
+    create_brief,
+    create_file,
+    upload_file,
+)
 
 
 router = APIRouter()
@@ -45,6 +51,8 @@ router.delete("/users/{user_id}", summary="delete current user",
 # router.get("/response", status_code=status.HTTP_200_OK)(get_emergency_response)
 
 router.post("/response", status_code=status.HTTP_200_OK, tags=responses)(start_emergency_response)
+# router.post("/upload-file", status_code=status.HTTP_200_OK, tags=responses)(upload_file)
+# router.post("/ers-files/upload/file", )  # upload file
 
 
 urlpatterns = []
