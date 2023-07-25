@@ -3,9 +3,11 @@ Emergency Model provides the identification, and the remedying activities at ins
 There will be two major groups of Emergency: natural and synthetic, and must be associated
 with at least one management level user.
 """
-
+import mimetypes
 from typing import Optional
 from eResponse import mixins
+
+mimetypes.common_types
 
 from django.db import models
 from django.db.models import Q
@@ -71,8 +73,7 @@ class Brief(mixins.TimeMixin, mixins.IDMixin):
     reporter = models.ForeignKey(UserModel, related_name="reporter", on_delete=models.CASCADE)
     title = models.CharField(_("Title Description"), max_length=255)
     text = models.TextField(_("Text"), max_length=500, blank=False, null=False)
-    pictures = models.ManyToManyField("Picture", blank=True, related_name='pictures')
-    videos = models.ManyToManyField("Video", blank=True, related_name='videos')
+    files = models.ManyToManyField("File", blank=True, related_name="files")
     objects = models.Manager()
 
     class Meta:
@@ -80,11 +81,7 @@ class Brief(mixins.TimeMixin, mixins.IDMixin):
         verbose_name_plural = "Briefs"
 
 
-class Picture(mixins.TimeMixin, mixins.IDMixin):
-    file = models.FileField(upload_to='photos/%Y/%m/%d/')
+class File(mixins.TimeMixin, mixins.IDMixin):
+    file = models.FileField(upload_to="files/%Y/%m/%d/")
     objects = models.Manager()
 
-
-class Video(mixins.TimeMixin, mixins.IDMixin):
-    file = models.FileField(upload_to='videos/%Y/%m/%d/')
-    objects = models.Manager()
