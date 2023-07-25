@@ -53,7 +53,7 @@ from eResponse import (
 
 from .utils import (
     create_access_token_sync, create_user_sync, get_user_from_token,
-    authenticate_user, login_token_async, to_schema, get_all_users,
+    authenticate_user, to_schema, get_all_users,
     filter_user_by_id, jwt_decode, update_user_sync, activate_user_sync,
     get_object_token, get_user_from_payload, get_user_sync
 )
@@ -128,29 +128,11 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
     token_expires = timedelta(minutes=int(LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES))
     access_token = await create_access_token_sync({"sub": _user_authenticate.email}, expires_delta=token_expires)
-
-    response_model = auth_token_schema.TokenModel(access_token=access_token, user_id=_user_authenticate.id)
+    token_data = {"access_token": access_token, "user_id": str(_user_authenticate.id)}
+    token_data.setdefault("token_type", "bearer")
+    response_model = auth_token_schema.TokenModel(**token_data)
 
     return response_model
-
-    # is_active = await get_user_from_token(form.username)
-    # if is_active is not None and not is_active.is_active:
-    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
-    #
-    # user = await authenticate_user(form.username, form.password)
-    # if user is None:
-    #     raise http_exception
-    #
-    # token_expires = await sync_to_async(lambda: timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES)))()
-    # access_token = await create_access_token_sync({"sub": user.email}, expires_delta=token_expires)
-    # # refresh_token =
-    #
-    # # auth_token = await login_token_async(user, access_token)
-    #
-    # response_model = auth_token_schema.TokenModel(access_token=access_token, user_id=user.id)
-    # return response_model
-    #
-    # # return await to_schema(auth_token, auth_token_schema.TokenSchema)
 
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
