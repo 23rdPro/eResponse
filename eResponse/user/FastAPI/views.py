@@ -12,7 +12,7 @@ import httpx
 import uuid
 import asyncio
 from asgiref.sync import sync_to_async
-from typing import List, Dict, Coroutine, Union, Tuple, Annotated, Any
+from typing import List, Dict, Coroutine, Union, Tuple, Annotated, Any, Optional
 
 
 from djantic import ModelSchema
@@ -37,26 +37,47 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OA
 # from eResponse.urls import router
 from eResponse.user import models as user_models
 
+from starlette.responses import PlainTextResponse, RedirectResponse
+
 from eResponse.auth_token.FastAPI import schema as auth_token_schema
 
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema, UserRegistrationSchema
-from eResponse import oauth2_scheme, pwd_context, ALGORITHM, API_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
+from eResponse import (
+    oauth2_scheme,
+    pwd_context,
+    ALGORITHM,
+    API_SECRET_KEY,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES
+)
 
 from .utils import (
-    create_access_token, create_user_sync, get_user_from_token,
+    create_access_token_sync, create_user_sync, get_user_from_token,
     authenticate_user, login_token_async, to_schema, get_all_users,
-    filter_user_by_id, jwt_decode, update_user_sync, activate_user_sync
+    filter_user_by_id, jwt_decode, update_user_sync, activate_user_sync,
+    get_object_token, get_user_from_payload, get_user_sync
 )
 
 URL = ""
+PREFIX = "/api/v1"
 
 
 async def create_user(*, new_user: UserRegistrationSchema):
     user = await create_user_sync(**new_user.dict())
+    token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = await create_access_token_sync({"sub": user.email}, expires_delta=token_expires)
     if user is not None:
-        return new_user
+        return RedirectResponse(url=f"{PREFIX}/users/{access_token}/activate")
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Incorrect email or password")
+
+
+async def activate_user(token: Optional[str]):
+    if token and isinstance(token, str):
+        payload = await jwt_decode(token)
+        user = await get_user_from_payload(payload)
+        return {"is_activated": user.is_active}
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="token not found")
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
@@ -96,25 +117,40 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
         detail="Incorrect email or password",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    is_active = await get_user_from_token(form.username)
-    if is_active is not None and not is_active.is_active:
+
+    _user_check = await get_user_sync(email=form.username)
+    if _user_check and not _user_check.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
-    user = await authenticate_user(form.username, form.password)
-    if user is None:
+    _user_authenticate = await authenticate_user(form.username, form.password)
+    if _user_authenticate is None:
         raise http_exception
 
-    token_expires = await sync_to_async(lambda: timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES)))()
-    access_token = await create_access_token({"sub": user.email}, expires_delta=token_expires)
+    token_expires = timedelta(minutes=int(LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = await create_access_token_sync({"sub": _user_authenticate.email}, expires_delta=token_expires)
 
-    auth_token = await login_token_async(user, access_token)
+    response_model = auth_token_schema.TokenModel(access_token=access_token, user_id=_user_authenticate.id)
 
-    return await to_schema(auth_token, auth_token_schema.TokenSchema)
+    return response_model
 
-
-async def activate_user(curr_user: Annotated[UserSchema, Depends(get_current_active_user)], token: str):  # todo
-    is_activated = await activate_user_sync(curr_user, token)
-    return {"is_activated": is_activated}
+    # is_active = await get_user_from_token(form.username)
+    # if is_active is not None and not is_active.is_active:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+    #
+    # user = await authenticate_user(form.username, form.password)
+    # if user is None:
+    #     raise http_exception
+    #
+    # token_expires = await sync_to_async(lambda: timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES)))()
+    # access_token = await create_access_token_sync({"sub": user.email}, expires_delta=token_expires)
+    # # refresh_token =
+    #
+    # # auth_token = await login_token_async(user, access_token)
+    #
+    # response_model = auth_token_schema.TokenModel(access_token=access_token, user_id=user.id)
+    # return response_model
+    #
+    # # return await to_schema(auth_token, auth_token_schema.TokenSchema)
 
 
 async def read_users_me(current_user: Annotated[UserSchema, Depends(get_current_active_user)]):
