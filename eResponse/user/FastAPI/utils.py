@@ -13,18 +13,6 @@ from eResponse.user import models as user_models
 from eResponse.auth_token import models as auth_token_models
 
 
-# @sync_to_async
-# def create_access_token(data: dict, expires_delta: timedelta | None = None):
-#     to_encode = data.copy()
-#     if expires_delta is not None:
-#         expire = datetime.utcnow() + expires_delta
-#     else:
-#         expire = datetime.utcnow() + timedelta(minutes=15)
-#     to_encode.update({"exp": expire})
-#     encoded_jwt = jwt.encode(to_encode, API_SECRET_KEY, algorithm=ALGORITHM)
-#     return encoded_jwt
-
-
 @sync_to_async
 def create_access_token_sync(data: dict, expires_delta: timedelta | None = None):
     encode = data.copy()
@@ -104,6 +92,11 @@ def authenticate_user(email: str, password: str):
 
 
 @sync_to_async
+def convert_to_model(**kwargs):
+    pass
+
+
+@sync_to_async
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -127,15 +120,6 @@ def filter_user_by_id(user_id: str):
     if user.exists():
         return user.get()
     return None
-
-
-@sync_to_async
-def login_token_async(user, access_token):
-    auth_token = auth_token_models.Token.objects.select_related("user").filter(user=user.id)
-    if auth_token.exists():
-        auth_token.update(access_token=access_token)
-        return auth_token.get()
-    return auth_token_models.Token.objects.create(access_token=access_token, user=user)
 
 
 @sync_to_async
