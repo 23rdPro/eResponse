@@ -1,6 +1,7 @@
-from typing import Annotated
-from fastapi import Depends
-from .schemas import EmergencySchema
+from typing import Annotated, Optional, List
+from fastapi import Depends, File, UploadFile
+from .schemas import EmergencySchema, BriefSchema
+from eResponse.user.FastAPI.schemas import GroupSchema
 from .utils import start_emergency_sync
 from eResponse.response import models
 from eResponse import oauth2_scheme
@@ -13,19 +14,51 @@ from eResponse.response.models import Emergency, Brief
 CurrentUser = Depends(oauth2_scheme)
 CurrentActiveUser = Depends(get_current_user)
 
+"""
+router.post("/ers-files/{user_id}/{mime_type}", )  # create_file
+router.post("/ers-files/upload/file", )  # upload file
 
-async def start_emergency_response(*, manager: Annotated[str, CurrentActiveUser], emergency: EmergencySchema):
+"""
+
+
+async def start_emergency_response(
+        *, manager: Annotated[str, CurrentActiveUser],
+        files: List[UploadFile],
+        brief: BriefSchema,
+        emergency: EmergencySchema,
+        emergency_type: GroupSchema
+):
     """
     "however a manager must instantiate this model hence"... from model
-    :param manager:
-    :param emergency:
-    :return:
+    await create brief a must
+    then update emergency with stuff
+    upload pictures, videos
+
+    permission if user in get_managers
+
     """
     # print(manager.id, type(manager))
     # print(emergency, type(emergency))
-    await start_emergency_sync(emergency, manager)
+    # await start_emergency_sync(emergency, manager)
+    # brief = await create_brief(manager, )
+    # picture = await upload_files
 
+    files = [models.File.objects.create(file=file.file) for file in files]
 
+    brief_to_dict = brief.dict()
+    brief_data = {"reporter": manager, "title": brief_to_dict.get("title"), "text": brief_to_dict.get("text")}
+    brief_instance = models.Brief.objects.create(**brief_data)
+    brief_instance.files.add(*files)
+
+    emergency_to_dict = emergency.dict()
+    emergency_type_to_dict = emergency_type.dict()
+
+    emergency_data = {"emergency_type": emergency_type_to_dict.get("name"), "severity": emergency_to_dict.get("severity")}
+    emergency_instance = models.Emergency.objects.create(**emergency_data)
+    emergency_instance.respondents.add(manager)
+    emergency_instance.briefs.add(brief_instance)
+
+    "async"
 
 
 async def create_brief():
