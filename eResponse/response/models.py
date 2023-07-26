@@ -15,7 +15,7 @@ UserModel = settings.AUTH_USER_MODEL
 
 
 class Emergency(mixins.TimeMixin, mixins.IDMixin):
-    emergency_type = models.OneToOneField(Group, on_delete=models.CASCADE, related_name='type')
+    emergency_type = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='type')
     # synthetic and natural emergencies
 
     # all users regardless of group however a manager must instantiate
