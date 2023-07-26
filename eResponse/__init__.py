@@ -6,6 +6,7 @@ from passlib.context import CryptContext
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+PREFIX = "/api/v1"
 
 logging.basicConfig(filename='appinfo.log', level=logging.DEBUG)
 
@@ -23,5 +24,6 @@ __all__ = (
     'API_SECRET_KEY',
     'ACCESS_TOKEN_EXPIRE_MINUTES',
     'LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES',
+    'PREFIX'
 
 )
