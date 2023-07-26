@@ -25,6 +25,7 @@ class EmergencySchema(ModelSchema):
     emergency_type: GroupSchema
     respondents: List[UserSchema]
     briefs: List[BriefSchema]
+    severity: int
 
     class Config:
         model = Emergency
