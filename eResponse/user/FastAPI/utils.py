@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta, datetime
 from asgiref.sync import sync_to_async
-from typing import Any
+from typing import Union
 from jose import jwt, JWTError
 from django.db import models
 from django.db.models.query import QuerySet
@@ -31,7 +31,7 @@ def jwt_decode(token):
 
 
 @sync_to_async
-def to_schema(django_obj: Any[models, QuerySet], schema: ModelSchema):
+def to_schema(django_obj: Union[type(models), type(QuerySet)], schema: ModelSchema):
     if hasattr(django_obj, "count"):  # queryset.count
         return schema.from_django(django_obj, many=True)
     return schema.from_orm(django_obj)
