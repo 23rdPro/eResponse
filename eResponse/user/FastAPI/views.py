@@ -48,7 +48,8 @@ from eResponse import (
     ALGORITHM,
     API_SECRET_KEY,
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES
+    LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES,
+    PREFIX
 )
 
 from .utils import (
@@ -59,7 +60,7 @@ from .utils import (
 )
 
 URL = ""
-PREFIX = "/api/v1"
+
 
 
 async def create_user(*, new_user: UserRegistrationSchema):
