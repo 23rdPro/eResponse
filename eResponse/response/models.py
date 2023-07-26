@@ -3,12 +3,8 @@ Emergency Model provides the identification, and the remedying activities at ins
 There will be two major groups of Emergency: natural and synthetic, and must be associated
 with at least one management level user.
 """
-import mimetypes
 from typing import Optional
 from eResponse import mixins
-
-mimetypes.common_types
-
 from django.db import models
 from django.db.models import Q
 from django.conf import settings
@@ -26,8 +22,8 @@ class Emergency(mixins.TimeMixin, mixins.IDMixin):
     # this model hence, cannot be blank
     respondents = models.ManyToManyField(UserModel, related_name='experts')
 
-    # each emergency may have multiple briefs, cannot be blank
-    briefs = models.ManyToManyField("Brief", related_name='briefs')
+    # each emergency may have multiple briefs, cannot be blank **
+    briefs = models.ManyToManyField("Brief", related_name='briefs', blank=True)
 
     class EmergencySeverity(models.IntegerChoices):
         BAD: tuple = 1, "Bad"
@@ -62,7 +58,8 @@ class Emergency(mixins.TimeMixin, mixins.IDMixin):
                 Q(reporter__id=user) | Q(reporter__email=user)
             ).all()
 
-    objects = EmergencyQuerySet.as_manager()
+    objects = models.Manager()
+    filters = EmergencyQuerySet.as_manager()
 
     class Meta:
         verbose_name = "Emergency Response"
