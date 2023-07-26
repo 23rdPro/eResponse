@@ -72,3 +72,68 @@ def start_emergency_sync(manager: User, files: List[UploadFile],
 @sync_to_async
 def create_brief():
     pass
+
+
+@sync_to_async
+def start_emergency_response_sync(**kwargs):
+    emergency_type_to_dict = kwargs.get("emergency_type").dict()  # Group
+    emergency_to_dict = kwargs.get("emergency").dict()
+    emergency_data = {"emergency_type": emergency_type_to_dict.get("name"),
+                      "severity": emergency_to_dict.get("severity")}
+    emergency_instance = Emergency.objects.create(**emergency_data)
+
+    # however a manager must instantiate this model hence"... from model
+    emergency_instance.respondents.add(kwargs.get("manager"))
+    # respondents cannot be blank, but because we need to wait for files
+    # before creating emergency leading to response redirect after successive segments:
+    # we made briefs accept blank in model to allow us ultimately call save() on emergency
+
+    emergency_instance.save()
+    return emergency_instance
+
+
+@sync_to_async
+def create_brief_sync(**kwargs):
+    emergency = Emergency.objects.get(kwargs.get("emergency_id"))
+    user = User.objects.get(kwargs.get("user_id"))
+
+    brief_to_dict = kwargs.get("brief").dict()
+    brief_data = {"reporter": user, "title": brief_to_dict.get("title"), "text": brief_to_dict.get("text")}
+    brief_instance = Brief.objects.create(**brief_data)
+
+    emergency.briefs.add(brief_instance)
+    emergency.save()
+
+    return emergency
+
+
+@sync_to_async
+def upload_files_sync(**kwargs):
+    file_objs = File.objects.bulk_create([File(file=file.file) for file in kwargs.get("files")])
+    emergency = Emergency.objects.get(id=kwargs.get("emergency_id"))
+    print("this field_names>>>>>>>", emergency.field_names, type(emergency.field_names))
+    briefs = emergency.briefs.all()
+    if briefs.count() == 1:
+        brief = briefs.get()
+        brief.files.add(*file_objs)
+        brief.save()
+    else:
+        pass  # todo
+
+    emergency.save()
+    return emergency
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
