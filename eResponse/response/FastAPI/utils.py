@@ -1,7 +1,7 @@
 from typing import Optional, List
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import Group
-from fastapi import UploadFile
+from fastapi import UploadFile, Header, HTTPException, status
 from eResponse.response.models import Emergency, Brief, File
 from djantic.main import ModelSchema
 from eResponse.user.models import User
@@ -76,10 +76,14 @@ def create_brief():
 
 @sync_to_async
 def start_emergency_response_sync(**kwargs):
-    emergency_type_to_dict = kwargs.get("emergency_type").dict()  # Group
+    # emergency_type_to_dict = kwargs.get("emergency_type").dict()  # Group
     emergency_to_dict = kwargs.get("emergency").dict()
-    emergency_data = {"emergency_type": emergency_type_to_dict.get("name"),
-                      "severity": emergency_to_dict.get("severity")}
+    emergency_data = {
+        "emergency_type": Group.objects.get_or_create(
+            emergency_to_dict.get("emergency_type").get("name"))[0],
+
+        "severity": emergency_to_dict.get("severity")
+    }
     emergency_instance = Emergency.objects.create(**emergency_data)
 
     # however a manager must instantiate this model hence"... from model
@@ -124,7 +128,22 @@ def upload_files_sync(**kwargs):
     return emergency
 
 
+def application_vnd(content_type: str = Header(...)):
+    """Require request MIME-type to be application/vnd.api+json"""
 
+    if content_type != "application/vnd.api+json":
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            f"Unsupported media type: {content_type}."
+            " It must be application/vnd.api+json",
+        )
+
+
+@sync_to_async
+def create_files_sync(files: List[UploadFile]):
+    files_obj = File.objects.bulk_create([File(file=file.file) for file in files])
+    print(type(files_obj), "files_obj>>>>>>>>>>>>>")
+    return files_obj
 
 
 
