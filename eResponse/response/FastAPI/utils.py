@@ -1,6 +1,8 @@
+from typing import Optional, List
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import Group
-from eResponse.response.models import Emergency, Brief
+from fastapi import UploadFile
+from eResponse.response.models import Emergency, Brief, File
 from djantic.main import ModelSchema
 from eResponse.user.models import User
 
@@ -11,8 +13,31 @@ def decode_token(user):
 
 
 @sync_to_async
-def start_emergency_sync(schema: ModelSchema, manager: User):
-    emergency = Emergency.objects.create()
+def is_user_manager(user: User):
+    return user in User.filters.get_managers()
+
+
+@sync_to_async
+def start_emergency_sync(manager: User, files: List[UploadFile],
+                         brief: ModelSchema, emergency: ModelSchema,
+                         emergency_type: ModelSchema):
+
+    files = [File.objects.create(file=file.file) for file in files]
+
+    brief_to_dict = brief.dict()
+    brief_data = {"reporter": manager, "title": brief_to_dict.get("title"), "text": brief_to_dict.get("text")}
+    brief_instance = Brief.objects.create(**brief_data)
+    brief_instance.files.add(*files)
+
+    emergency_to_dict = emergency.dict()
+    emergency_type_to_dict = emergency_type.dict()
+
+    emergency_data = {"emergency_type": emergency_type_to_dict.get("name"), "severity": emergency_to_dict.get("severity")}
+    emergency_instance = Emergency.objects.create(**emergency_data)
+
+    emergency_instance.respondents.add(manager)
+    emergency_instance.briefs.add(brief_instance)
+    return emergency_instance
 
     # pass
     # print(Emergency.objects.filter(id=schema.dict().get(id)))
