@@ -58,18 +58,18 @@ class User(
 
     class UserQueryset(models.QuerySet):
         def get_users(self):  # get all users
-            return self.prefetch_related('groups', 'certifications')
+            return self.prefetch_related('groups', 'certifications').all()
 
         def get_experts(self):  # get all available users
-            return self.get_users().afilter(is_available=True)
+            return self.get_users().filter(is_available=True).all()
 
         def get_managers(self):  # get all available managers
-            return self.get_experts().filter(groups__name__contains='managers')
+            return self.get_experts().filter(groups__name='managers').all()
 
         def get_leads(self):  # get all available leads
-            return self.get_experts().filter(groups__name__contains='leads')
+            return self.get_experts().filter(groups__name__contains='leads').all()
 
-    users: Union[UserQueryset, Manager] = UserQueryset.as_manager()
+    filters: Union[UserQueryset, Manager] = UserQueryset.as_manager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []  # none, to allow frontend auth flow
