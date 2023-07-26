@@ -1,3 +1,3 @@
-RESPONSE_PREFIX = "response"
+RESPONSE_PREFIX = "responses"
 
 __all__ = ["RESPONSE_PREFIX", ]
