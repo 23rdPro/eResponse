@@ -103,7 +103,7 @@ def verify_password(plain_password, hashed_password):
 
 @sync_to_async
 def get_user_from_token(token: str):
-    user = user_models.User.users.get_users().filter(email=token)
+    user = user_models.User.filters.get_users().filter(email=token)
     if user.exists():
         return user.get()
     return None
@@ -111,7 +111,7 @@ def get_user_from_token(token: str):
 
 @sync_to_async
 def get_all_users():
-    return user_models.User.users.get_users()
+    return user_models.User.filters.get_users()
 
 
 @sync_to_async
@@ -125,7 +125,7 @@ def filter_user_by_id(user_id: str):
 @sync_to_async
 def get_user_from_payload(payload: dict):
     email = payload.get("sub")
-    user = user_models.User.users.get_users().filter(email=email).distinct()
+    user = user_models.User.filters.get_users().filter(email=email).distinct()
     user.update(is_active=True)
     return user.get()
 
