@@ -140,10 +140,34 @@ def application_vnd(content_type: str = Header(...)):
 
 
 @sync_to_async
-def create_files_sync(files: List[UploadFile]):
-    files_obj = File.objects.bulk_create([File(file=file.file) for file in files])
-    print(type(files_obj), "files_obj>>>>>>>>>>>>>")
-    return files_obj
+def create_files_sync(files: list, emergency_id: str):
+    filez = File.objects.bulk_create([file.file for file in files])
+    print(type(filez), "files_obj>>>>>>>>>>>>>")
+    emergency = Emergency.objects.get(id=emergency_id)
+    emergency.briefs.files.add(*filez)
+    emergency.save()
+    return emergency
+
+
+@sync_to_async
+def create_emergency_response_sync(e_data: dict, user: User, files: list):
+    emergency_type = Group.objects.get_or_create(e_data.get("emergency_type").get("name"))[0]
+    severity = e_data.get("severity")
+
+    brief_data = {"title": e_data.get("briefs")[0].get("title"),
+                  "text": e_data.get("briefs")[0].get("text"), "reporter": user}
+    brief = Brief.objects.create(**brief_data)
+
+    filez = File.objects.bulk_create([file.file for file in files])
+    print(type(filez), "files_obj>>>>>>>>>>>>>")
+    brief.files.add(*filez)
+
+    emergency = Emergency.objects.create(emergency_type=emergency_type, severity=severity)
+    emergency.respondents.add(user)
+    emergency.briefs.add(brief)
+    emergency.save()
+
+    return emergency
 
 
 
