@@ -55,7 +55,9 @@ router.delete("/users/{user_id}", summary="delete current user",
 # router.post("/response/add-brief/{emergency_id}/{user_id}", status_code=status.HTTP_200_OK, tags=responses)(create_brief)
 # router.post("/%s/add-files/{emergency_id}" % RESPONSE_PREFIX, status_code=status.HTTP_200_OK, tags=responses)(upload_files)
 
-router.post("/%s" % RESPONSE_PREFIX, status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
+# router.post("/%s" % RESPONSE_PREFIX, status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
+router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
+# router.post("/emergencies/upload-files/{emergency_id}", status_code=status.HTTP_200_OK, tags=responses)(upload_files)
 # router.post("/upload-file", status_code=status.HTTP_200_OK, tags=responses)(upload_file)
 # router.post("/ers-files/upload/file", )  # upload file
 
