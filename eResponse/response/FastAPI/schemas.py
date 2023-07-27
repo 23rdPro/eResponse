@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Optional
 from djantic import ModelSchema
 from eResponse.response.models import File, Brief, Emergency
@@ -18,7 +20,7 @@ class BriefSchema(ModelSchema):
 
     class Config:
         model = Brief
-        include = ["id", "title", "text", "files"]
+        include = ["title", "text"]
 
 
 class EmergencySchema(ModelSchema):
@@ -29,7 +31,7 @@ class EmergencySchema(ModelSchema):
 
     class Config:
         model = Emergency
-        include = ["id", "emergency_type", "respondents", "briefs", "severity"]
+        include = ["emergency_type", "briefs", "severity", "respondents"]
 
 
 class StartEmergencySchema(ModelSchema):
