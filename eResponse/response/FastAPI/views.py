@@ -1,5 +1,7 @@
 from typing import Annotated, Optional, List
 from fastapi import Depends, File, UploadFile, status
+from django.contrib.auth.models import Group
+from django.db import transaction
 from starlette.responses import PlainTextResponse, RedirectResponse
 from eResponse.response import RESPONSE_PREFIX
 from .schemas import EmergencySchema, BriefSchema, FileSchema, StartEmergencySchema
@@ -14,6 +16,7 @@ from .utils import (
     upload_files_sync,
     application_vnd,
     create_files_sync,
+    create_emergency_response_sync,
 )
 from eResponse.response import models
 from eResponse import oauth2_scheme, PREFIX
@@ -29,18 +32,24 @@ CurrentUser = Depends(oauth2_scheme)
 CurrentActiveUser = Depends(get_current_user)
 
 
-async def create_emergency_response(emg: EmergencySchema, manager: Annotated[str, CurrentActiveUser],
-                                    header: Annotated[str, Depends(application_vnd)],
-                                    files: List[UploadFile], briefs: List[BriefSchema],
-                                    respondents: List[UserSchema], emergency_type: GroupSchema):
+async def create_emergency_response(
+        manager: Annotated[str, CurrentActiveUser],
+        emg: EmergencySchema, files: List[UploadFile]
+):
+    # filez = await create the file
+    # brief = await create the brief then add filez, manager=reporter
+    # type = await group create type
+    # emergency = await create emergency (brief_to_briefs, manager_to_respondents, severity, emergency_type_to_type)
+    pass
+    # emergency = await create_emergency_response_sync(
+    #     emg.dict(), manager, files)
+    #
+    # return await to_schema(emergency, EmergencySchema)
 
-    briefs_objs = await create_briefs_sync(briefs)
-    async for brief in briefs_objs:
-        files_objs = await create_files_sync(files, brief)
 
-    group = await create_emergency_type_sync(emergency_type)
-    users = await create_respondents_sync(respondents, manager)
-    emergency = await create_emergency_sync(group, users, briefs, emg)
+async def upload_files(files: List[UploadFile], emergency_id: str):
+    emergency = await create_files_sync(files, emergency_id)
+    return await to_schema(emergency, EmergencySchema)
 
 
 async def start_emergency_response(
@@ -64,11 +73,11 @@ async def create_brief(emergency_id: str, user_id: str, brief: Annotated[str, Br
                             status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
-async def upload_files(files: List[UploadFile], emergency_id: str):
-    _data = {"files": files, "emergency_id": emergency_id}
-    file_instance: Emergency = await upload_files_sync(**_data)
-
-    return await to_schema(file_instance, EmergencySchema)
+# async def upload_files(files: List[UploadFile], emergency_id: str):
+#     _data = {"files": files, "emergency_id": emergency_id}
+#     file_instance: Emergency = await upload_files_sync(**_data)
+#
+#     return await to_schema(file_instance, EmergencySchema)
 
 
 async def get_emergency_response():
