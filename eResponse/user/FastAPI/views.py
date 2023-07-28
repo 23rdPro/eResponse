@@ -62,7 +62,6 @@ from .utils import (
 URL = ""
 
 
-
 async def create_user(*, new_user: UserRegistrationSchema):
     user = await create_user_sync(**new_user.dict())
     token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
