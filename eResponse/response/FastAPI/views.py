@@ -4,9 +4,10 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 from starlette.responses import PlainTextResponse, RedirectResponse
 from eResponse.response import RESPONSE_PREFIX
-from .schemas import EmergencySchema, BriefSchema, FileSchema, StartEmergencySchema
+from .schemas import EmergencySchema, BriefSchema, FileSchema, CreateEmergencyPydanticSchema
 from eResponse.user.FastAPI.schemas import GroupSchema, UserSchema
 from eResponse.api_helpers import to_schema
+
 from .utils import (
     start_emergency_sync,
     start_emergency_sync,
@@ -17,6 +18,9 @@ from .utils import (
     application_vnd,
     create_files_sync,
     create_emergency_response_sync,
+    create_emergency_group_sync,
+    schema_to_dict,
+    brief_data_from_e_dict_sync,
 )
 from eResponse.response import models
 from eResponse import oauth2_scheme, PREFIX
@@ -34,15 +38,26 @@ CurrentActiveUser = Depends(get_current_user)
 
 async def create_emergency_response(
         manager: Annotated[str, CurrentActiveUser],
-        emg: EmergencySchema, files: List[UploadFile]
+        emg: CreateEmergencyPydanticSchema
 ):
-    # filez = await create the file
-    # brief = await create the brief then add filez, manager=reporter
-    # type = await group create type
-    # emergency = await create emergency (brief_to_briefs, manager_to_respondents, severity, emergency_type_to_type)
-    pass
-    # emergency = await create_emergency_response_sync(
-    #     emg.dict(), manager, files)
+    # pass
+    await sync_to_async(lambda: print(emg))()
+    return emg
+    # filez: list = await create_files_sync(files)
+    # print(filez)
+    #
+    # emg_dict = await schema_to_dict(emg)
+    #
+    # brief_data = await brief_data_from_e_dict_sync(emg_dict, manager)
+    # brief = await create_brief_sync(filez, brief_data)
+    #
+    # group_name = await sync_to_async(lambda: emg_dict.get("emergency_type").get("name"))()
+    # emergency_group = await create_emergency_group_sync(group_name)
+    #
+    # severity = await sync_to_async(lambda: emg_dict.get("severity"))()
+    # emergency_data = {"emergency_type": emergency_group, "severity": severity}
+    #
+    # emergency = await create_emergency_response_sync(emergency_data, brief, manager)
     #
     # return await to_schema(emergency, EmergencySchema)
 
@@ -54,7 +69,7 @@ async def upload_files(files: List[UploadFile], emergency_id: str):
 
 async def start_emergency_response(
         *, manager: Annotated[str, CurrentActiveUser],
-        emergency: StartEmergencySchema,
+        emergency: Emergency,
         # emergency_type: GroupSchema
 ):
     _data = {"manager": manager, "emergency": emergency}  # "emergency_type": emergency_type
