@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from enum import Enum, IntEnum
 from typing import List, Optional
 from djantic import ModelSchema
+from pydantic.main import BaseModel
 from eResponse.response.models import File, Brief, Emergency
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 
@@ -25,21 +27,52 @@ class BriefSchema(ModelSchema):
 
 class EmergencySchema(ModelSchema):
     emergency_type: GroupSchema
-    respondents: List[UserSchema]
-    briefs: List[BriefSchema]
-    severity: int
-
-    class Config:
-        model = Emergency
-        include = ["emergency_type", "briefs", "severity", "respondents"]
-
-
-class StartEmergencySchema(ModelSchema):
-    emergency_type: GroupSchema
-    severity: int = 1
-    briefs: List[BriefSchema] or [] = []
     respondents: Optional[List[UserSchema]]
+    briefs:  Optional[List[BriefSchema]]
+    severity: int = 1
 
     class Config:
         model = Emergency
-        include = ["severity", "emergency_type", "briefs"]
+        include = ["emergency_type", "briefs", "severity",]
+
+
+class GroupPydanticEnum(str, Enum):
+    synthetic = "synthetic"
+    natural = "natural"
+
+
+class SeverityEnum(IntEnum):
+    BAD = 1
+    TERRIBLE = 2
+    CATACLYSMIC = 3
+
+
+class SeveritySchema(BaseModel):
+    BAD: SeverityEnum = SeverityEnum.BAD
+    # TERRIBLE: SeverityEnum = SeverityEnum.TERRIBLE
+    # CATACLYSMIC: SeverityEnum = SeverityEnum.CATACLYSMIC
+
+
+class GroupPydanticSchema(BaseModel):
+    # synthetic: GroupPydanticEnum = GroupPydanticEnum.synthetic
+    natural: GroupPydanticEnum = GroupPydanticEnum.natural
+
+
+class BriefPydanticSchema(BaseModel):
+    title: str
+    text: str
+    files: List[bytes]
+
+
+class CreateEmergencyPydanticSchema(BaseModel):
+    emergency_type: str
+    severity: int = 1
+    brief_title: str
+    brief_text: str
+    files: List[bytes]
+
+    # emergency_type: GroupPydanticSchema
+    # severity: SeveritySchema
+    # brief: BriefPydanticSchema
+
+
