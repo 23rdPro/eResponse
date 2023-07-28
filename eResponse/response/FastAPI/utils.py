@@ -97,18 +97,16 @@ def start_emergency_response_sync(**kwargs):
 
 
 @sync_to_async
-def create_brief_sync(**kwargs):
-    emergency = Emergency.objects.get(kwargs.get("emergency_id"))
-    user = User.objects.get(kwargs.get("user_id"))
+def create_brief_sync(files: list, brief_data: dict):
+    brief = Brief.objects.create(**brief_data)
+    brief.files.add(*files)
+    brief.save()
+    return brief
 
-    brief_to_dict = kwargs.get("brief").dict()
-    brief_data = {"reporter": user, "title": brief_to_dict.get("title"), "text": brief_to_dict.get("text")}
-    brief_instance = Brief.objects.create(**brief_data)
 
-    emergency.briefs.add(brief_instance)
-    emergency.save()
-
-    return emergency
+@sync_to_async
+def create_emergency_group_sync(name: str):
+    return Group.objects.get_or_create(name)[0]
 
 
 @sync_to_async
@@ -140,37 +138,55 @@ def application_vnd(content_type: str = Header(...)):
 
 
 @sync_to_async
-def create_files_sync(files: list, emergency_id: str):
+def create_files_sync(files: list,):
     filez = File.objects.bulk_create([file.file for file in files])
     print(type(filez), "files_obj>>>>>>>>>>>>>")
-    emergency = Emergency.objects.get(id=emergency_id)
-    emergency.briefs.files.add(*filez)
-    emergency.save()
-    return emergency
+    return filez
+    # emergency = Emergency.objects.get(id=emergency_id)
+    # emergency.briefs.files.add(*filez)
+    # emergency.save()
+    # return emergency
 
 
 @sync_to_async
-def create_emergency_response_sync(e_data: dict, user: User, files: list):
-    emergency_type = Group.objects.get_or_create(e_data.get("emergency_type").get("name"))[0]
-    severity = e_data.get("severity")
-
-    brief_data = {"title": e_data.get("briefs")[0].get("title"),
-                  "text": e_data.get("briefs")[0].get("text"), "reporter": user}
-    brief = Brief.objects.create(**brief_data)
-
-    filez = File.objects.bulk_create([file.file for file in files])
-    print(type(filez), "files_obj>>>>>>>>>>>>>")
-    brief.files.add(*filez)
-
-    emergency = Emergency.objects.create(emergency_type=emergency_type, severity=severity)
+def create_emergency_response_sync(e_data: dict, brief: Brief, user: User):
+    emergency = Emergency.objects.create(**e_data)
     emergency.respondents.add(user)
     emergency.briefs.add(brief)
     emergency.save()
-
     return emergency
 
+    # emergency_type = Group.objects.get_or_create(e_data.get("emergency_type").get("name"))[0]
+    # severity = e_data.get("severity")
+    #
+    # brief_data = {"title": e_data.get("briefs")[0].get("title"),
+    #               "text": e_data.get("briefs")[0].get("text"), "reporter": user}
+    # brief = Brief.objects.create(**brief_data)
+    #
+    # filez = File.objects.bulk_create([file.file for file in files])
+    # print(type(filez), "files_obj>>>>>>>>>>>>>")
+    # brief.files.add(*filez)
+    #
+    # emergency = Emergency.objects.create(emergency_type=emergency_type, severity=severity)
+    # emergency.respondents.add(user)
+    # emergency.briefs.add(brief)
+    # emergency.save()
+    #
+    # return emergency
 
 
+@sync_to_async
+def schema_to_dict(schema: ModelSchema) -> dict:
+    return schema.dict()
+
+
+@sync_to_async
+def brief_data_from_e_dict_sync(emg_dict: dict, user: User) -> dict:
+    return {
+        "reporter": user,
+        "title": emg_dict.get("briefs")[0].get("title"),
+        "text": emg_dict.get("briefs")[0].get("text"),
+    }
 
 
 
