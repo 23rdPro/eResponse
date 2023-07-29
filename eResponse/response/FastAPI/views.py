@@ -1,10 +1,19 @@
 from typing import Annotated, Optional, List
+
+import aiofiles
 from fastapi import Depends, File, UploadFile, status
+from django.core.files import File as DjangoFile
 from django.contrib.auth.models import Group
 from django.db import transaction
 from starlette.responses import PlainTextResponse, RedirectResponse
 from eResponse.response import RESPONSE_PREFIX
-from .schemas import EmergencySchema, BriefSchema, FileSchema, CreateEmergencyPydanticSchema
+from .schemas import (
+    EmergencySchema,
+    BriefSchema,
+    FileSchema,
+    CreateEmergencyPydanticSchema,
+    CreateEmergencyResponseSchema,
+)
 from eResponse.user.FastAPI.schemas import GroupSchema, UserSchema
 from eResponse.api_helpers import to_schema
 
@@ -21,6 +30,7 @@ from .utils import (
     create_emergency_group_sync,
     schema_to_dict,
     brief_data_from_e_dict_sync,
+    create_file_sync,
 )
 from eResponse.response import models
 from eResponse import oauth2_scheme, PREFIX
@@ -36,13 +46,55 @@ CurrentUser = Depends(oauth2_scheme)
 CurrentActiveUser = Depends(get_current_user)
 
 
+@sync_to_async
+@transaction.atomic
+def transaction_atomic_files():
+    d_file = models.File()
+    d_file.save()
+    return d_file
+
+
+async def file_upload(user: Annotated[str, CurrentActiveUser], files: List[UploadFile] = File(...)):
+    filez = []
+    for file in files:
+
+        async with aiofiles.open(f"eResponse/media/{file.filename}", "wb") as media:
+            content = await file.read()
+            await media.write(content)
+
+            d_file = await transaction_atomic_files()
+            filez.append(d_file.id)
+
+    # filez = await models.File.objects.afilter(id__in=(f.id for f in filez)).all()
+
+    # filez = await to_schema(filez, FileSchema)
+    # user = await to_schema(user, UserSchema)
+
+    # await sync_to_async(lambda: print(filez, "<<<<<<<<>>>>>>>>"))()
+
+    return RedirectResponse(url=f"{PREFIX}/emergencies/{filez}/{user.id}")
+
+
 async def create_emergency_response(
-        manager: Annotated[str, CurrentActiveUser],
-        emg: CreateEmergencyPydanticSchema
+        emerg: CreateEmergencyResponseSchema,
+        files: List[str],
+        user: str
+
 ):
+    await sync_to_async(lambda: print(emerg.dict()))()
+    return emerg
+
+
+    # return files
+    # async def _upload_files(files: List[UploadFile]):
+    #     return await create_files_sync(files)
+    #
+    # filez = _upload_files(files=)
+
+
     # pass
-    await sync_to_async(lambda: print(emg))()
-    return emg
+    # await sync_to_async(lambda: print(emg))()
+    # return emg
     # filez: list = await create_files_sync(files)
     # print(filez)
     #
@@ -106,4 +158,5 @@ async def update_response():
 
 async def delete_response():
     pass
+
 
