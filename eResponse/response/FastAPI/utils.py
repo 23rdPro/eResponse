@@ -3,6 +3,7 @@ from asgiref.sync import sync_to_async
 from django.contrib.auth.models import Group
 from fastapi import UploadFile, Header, HTTPException, status
 from eResponse.response.models import Emergency, Brief, File
+from django.core.files.base import File as DjangoFile
 from djantic.main import ModelSchema
 from eResponse.user.models import User
 
@@ -138,10 +139,41 @@ def application_vnd(content_type: str = Header(...)):
 
 
 @sync_to_async
-def create_files_sync(files: list,):
-    filez = File.objects.bulk_create([file.file for file in files])
-    print(type(filez), "files_obj>>>>>>>>>>>>>")
+def create_files_sync(files: List[str],):
+    filez = []
+    for name in files:
+        with open(name) as fx:
+            fz = File()
+            field_file = DjangoFile(fx)
+            fz.file.save(field_file.name, field_file)
+            filez.append(fz)
     return filez
+
+    #         my_file.save()
+    #         # await sync_to_async(lambda: my_file.save())()
+    #         filez.append(my_file)
+    # return filez
+
+    #         filez.append(File(file=DjangoFile(fx)))
+    # filez = File.objects.bulk_create(*filez)
+    # return filez
+
+    # filez = []
+    # for file_path in files:
+    #     with open(file_path, 'r') as file:
+    #         filez.append(File.objects.create(file=file))
+    # return filez
+
+    # print(files, ">>>>>>>>>>>>>>>>>>>>>>>.")
+    # # for f in files:
+    #     # print(f.read())
+    #     # print(f.filename, type(f.file), f.size)
+    #     # with open(f.filename, 'r') as fg:
+    #     #     print(fg.readlines())
+    #     # print(dir(f.file))
+    # filez = File.objects.bulk_create([file.file for file in files])
+    # print(type(filez), "files_obj>>>>>>>>>>>>>")
+    # return filez
     # emergency = Emergency.objects.get(id=emergency_id)
     # emergency.briefs.files.add(*filez)
     # emergency.save()
@@ -189,10 +221,12 @@ def brief_data_from_e_dict_sync(emg_dict: dict, user: User) -> dict:
     }
 
 
-
-
-
-
-
-
+@sync_to_async
+def create_file_sync(path: str):
+    with open(path) as MEDIA:
+        file = File()
+        d_type = DjangoFile(MEDIA)
+        file.file.save('media', d_type)
+        file.save()
+    return file
 
