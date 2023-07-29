@@ -16,6 +16,7 @@ from eResponse.response.FastAPI.views import (
     create_brief,
     upload_files,
     create_emergency_response,
+    file_upload,
 )
 
 
@@ -56,10 +57,18 @@ router.delete("/users/{user_id}", summary="delete current user",
 # router.post("/%s/add-files/{emergency_id}" % RESPONSE_PREFIX, status_code=status.HTTP_200_OK, tags=responses)(upload_files)
 
 # router.post("/%s" % RESPONSE_PREFIX, status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
-router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
+# router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
 # router.post("/emergencies/upload-files/{emergency_id}", status_code=status.HTTP_200_OK, tags=responses)(upload_files)
 # router.post("/upload-file", status_code=status.HTTP_200_OK, tags=responses)(upload_file)
 # router.post("/ers-files/upload/file", )  # upload file
+
+# router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(start_by_file_upload)
+# router.post("/emergencies/{files}", status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
+
+
+router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(file_upload)
+router.post("/emergencies/{files}/{user}", status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
+
 
 
 urlpatterns = []
