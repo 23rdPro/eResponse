@@ -41,6 +41,14 @@ class GroupPydanticEnum(str, Enum):
     natural = "natural"
 
 
+class CreateEmergencyResponseSchema(ModelSchema):
+    emergency_type: GroupSchema
+
+    class Config:
+        model = Emergency
+        include = ["emergency_type"]
+
+
 class SeverityEnum(IntEnum):
     BAD = 1
     TERRIBLE = 2
@@ -54,7 +62,7 @@ class SeveritySchema(BaseModel):
 
 
 class GroupPydanticSchema(BaseModel):
-    # synthetic: GroupPydanticEnum = GroupPydanticEnum.synthetic
+    synthetic: GroupPydanticEnum = GroupPydanticEnum.synthetic
     natural: GroupPydanticEnum = GroupPydanticEnum.natural
 
 
