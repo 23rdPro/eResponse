@@ -4,6 +4,7 @@ There will be two major groups of Emergency: natural and synthetic, and must be 
 with at least one management level user.
 """
 from typing import Optional
+from asgiref.sync import sync_to_async
 from eResponse import mixins
 from django.db import models
 from django.db.models import Q
@@ -81,4 +82,31 @@ class Brief(mixins.TimeMixin, mixins.IDMixin):
 class File(mixins.TimeMixin, mixins.IDMixin):
     file = models.FileField(upload_to="files/%Y/%m/%d/")
     objects = models.Manager()
+
+    def save(self, *args, **kwargs):
+        filename = self.generate_file()
+        with open(filename, "rb") as f:
+            self.file.save(filename, f, save=False)
+        # delete file when done todo
+        return super(File, self).save(*args, **kwargs)
+
+    async def asave(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        return await sync_to_async(self.save)(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
+
+    @staticmethod
+    def generate_file():
+        import glob
+        import os
+
+        files = glob.glob("eResponse/media/*")  # * means all, if specific format needed then *.csv
+        latest = max(files, key=os.path.getctime)
+        print(">>>>>>>>>>>>>>>>>>>", latest)
+        return latest
 
