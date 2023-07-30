@@ -3,6 +3,7 @@ Emergency Model provides the identification, and the remedying activities at ins
 There will be two major groups of Emergency: natural and synthetic, and must be associated
 with at least one management level user.
 """
+import os.path
 from typing import Optional
 from asgiref.sync import sync_to_async
 from eResponse import mixins
@@ -38,6 +39,16 @@ class Emergency(mixins.TimeMixin, mixins.IDMixin):
     )
 
     class EmergencyQuerySet(models.QuerySet):
+        def get_all_emergencies(self):
+            self.afilter()
+            return self.select_related(
+                "emergency_type"
+            ).prefetch_related("respondents", "briefs").all()
+
+        async def afilter(self):
+
+            return await sync_to_async(self.filter)()
+
         def get_all_experts(self):
             return self.filter(respondents__groups__name='experts').all()
 
@@ -82,6 +93,12 @@ class Brief(mixins.TimeMixin, mixins.IDMixin):
 class File(mixins.TimeMixin, mixins.IDMixin):
     file = models.FileField(upload_to="files/%Y/%m/%d/")
     objects = models.Manager()
+
+    def get_file_path_name(self):
+        return os.path.basename(self.file.name)
+
+    def __str__(self):
+        return self.get_file_path_name()
 
     def save(self, *args, **kwargs):
         filename = self.generate_file()
