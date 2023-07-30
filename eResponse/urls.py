@@ -11,13 +11,9 @@ from eResponse.user.FastAPI import views, schemas
 from eResponse.user import models
 
 from eResponse.response.FastAPI.views import (
-    start_emergency_response,
-    get_emergency_response,
-    create_brief,
-    upload_files,
-    create_emergency_response,
-    file_upload,
     init_response,
+    update_response,
+    get_responses,
 )
 
 
@@ -71,6 +67,8 @@ router.delete("/users/{user_id}", summary="delete current user",
 # router.post("/emergencies/{files}/{user}", status_code=status.HTTP_200_OK, tags=responses)(create_emergency_response)
 
 router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(init_response)
+router.get("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(get_responses)
+router.patch("/emergencies/{response_id}", status_code=status.HTTP_200_OK, tags=responses)(update_response)
 
 
 
