@@ -18,22 +18,11 @@ from eResponse.user.FastAPI.schemas import GroupSchema, UserSchema
 from eResponse.api_helpers import to_schema
 
 from .utils import (
-    start_emergency_sync,
-    start_emergency_sync,
-    is_user_manager,
-    start_emergency_response_sync,
     create_brief_sync,
-    upload_files_sync,
-    application_vnd,
-    create_files_sync,
-    create_emergency_response_sync,
-    create_emergency_group_sync,
-    schema_to_dict,
-    brief_data_from_e_dict_sync,
-    create_file_sync,
-    get_model_object,
+    aget_or_create,
     create_response_sync,
-    transaction_atomic_file
+    transaction_atomic_file,
+    get_responses_sync,
 )
 from eResponse.response import models
 from eResponse import oauth2_scheme, PREFIX
@@ -69,7 +58,7 @@ async def init_response(
 
     action_dict = action.dict()
     action_data = {
-        "emergency_type": await get_model_object(
+        "emergency_type": await aget_or_create(
             **{"name": action_dict["emergency_type"], "model": Group}
         ),
         "severity": action_dict["severity"],
@@ -82,19 +71,45 @@ async def init_response(
     return await to_schema(response, EmergencySchema)
 
 
-def update_response(
+async def update_response(
         user: Annotated[str, CurrentActiveUser],
+        response_id: str,
+        response: CreateEmergencyResponseSchema = Depends(),
+        files: List[UploadFile] = File(...),
 
 ):
-    pass
+    response = await Emergency.objects.aget(id=response_id)
+    r_schema = await to_schema(response, EmergencySchema)
+
+    r_data = response.dict(exclude_unset=True)
+    r_update = response.copy(update=r_data)
+
+    return r_update
+    # await run_model_update(**{"model": Emergency, })
 
 
 def delete_response():
     pass
 
 
-def get_responses():
-    pass
+async def get_responses(user: Annotated[str, CurrentActiveUser]):
+    # files = await sync_to_async(lambda: models.File.objects.all())()
+    # # await sync_to_async(lambda: print(files))()
+    # async for file in files:
+    #     await sync_to_async(lambda: print(file, file.file))()
+
+    # return await to_schema(files, FileSchema)
+
+    ids = []
+    responses = await get_responses_sync()
+    # async for response in responses:
+    #     async for brief in response.briefs:
+    #         file = brief.
+
+    # await sync_to_async(lambda: print(len(responses), len(_responses)))()
+
+    # return await to_schema(responses, EmergencySchema)
+
 
 
 def get_response():
