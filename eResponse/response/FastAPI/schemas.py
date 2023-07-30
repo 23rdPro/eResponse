@@ -10,11 +10,11 @@ from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 
 
 class FileSchema(ModelSchema):
-    file: FilePath
+    file: str
 
     class Config:
         model = File
-        include = ["id", "file"]
+        include = ["id", str("file")]
 
 
 class BriefSchema(ModelSchema):
@@ -27,9 +27,17 @@ class BriefSchema(ModelSchema):
         include = ["title", "text", ]  # files
 
 
+class EmergencyBriefSchema(ModelSchema):
+    files: List[FileSchema]
+
+    class Config:
+        model = Brief
+        include = ["id", "title", "text", "files"]
+
+
 class EmergencySchema(ModelSchema):
     respondents: List[UserSchema]
-    briefs: List[BriefSchema]
+    briefs: List[EmergencyBriefSchema]
 
     class Config:
         model = Emergency
