@@ -230,7 +230,7 @@ def create_file_sync(path: str):
 
 
 @sync_to_async
-def get_model_object(**kwargs):
+def aget_or_create(**kwargs):
     model = kwargs.pop("model")
     return model.objects.get_or_create(**kwargs)[0]
 
@@ -246,4 +246,9 @@ def transaction_atomic_file():
     d_file = File()
     d_file.save()
     return d_file
+
+
+@sync_to_async
+def get_responses_sync():
+    return Emergency.filters.get_all_emergencies()
 
