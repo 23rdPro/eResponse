@@ -3,6 +3,8 @@ import os
 import typing
 
 from . import managers
+from asgiref.sync import sync_to_async
+from django.contrib.auth.models import UserManager
 from eResponse import mixins
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -54,9 +56,13 @@ class User(
                                             blank=True)
     avatar = models.FileField(upload_to=avatars_path, blank=True)
 
-    objects = managers.UserManager()
+    # objects = models.Manager()
+    objects = UserManager()
 
     class UserQueryset(models.QuerySet):
+        async def afilter(self, **kwargs):
+            return await sync_to_async(self.filter)(**kwargs)
+
         def get_users(self):  # get all users
             return self.prefetch_related('groups', 'certifications').all()
 
