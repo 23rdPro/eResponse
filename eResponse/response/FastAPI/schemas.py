@@ -4,12 +4,13 @@ from enum import Enum, IntEnum
 from typing import List, Optional
 from djantic import ModelSchema
 from pydantic.main import BaseModel
+from pydantic import FilePath
 from eResponse.response.models import File, Brief, Emergency
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
 
 
 class FileSchema(ModelSchema):
-    file: str
+    file: FilePath
 
     class Config:
         model = File
@@ -17,23 +18,30 @@ class FileSchema(ModelSchema):
 
 
 class BriefSchema(ModelSchema):
-    files: Optional[List[FileSchema]]
-    # reporter: UserSchema
+    title: str
+    text: str
+    # files: List[FileSchema]
 
     class Config:
         model = Brief
-        include = ["title", "text"]
+        include = ["title", "text", ]  # files
 
 
 class EmergencySchema(ModelSchema):
-    emergency_type: GroupSchema
-    respondents: Optional[List[UserSchema]]
-    briefs:  Optional[List[BriefSchema]]
-    severity: int = 1
+    respondents: List[UserSchema]
+    briefs: List[BriefSchema]
 
     class Config:
         model = Emergency
-        include = ["emergency_type", "briefs", "severity",]
+        include = [
+            "id",
+            "created_at",
+            "updated_at",
+            "respondents",
+            "emergency_type",
+            "briefs",
+            "severity",
+        ]
 
 
 class GroupPydanticEnum(str, Enum):
@@ -41,18 +49,20 @@ class GroupPydanticEnum(str, Enum):
     natural = "natural"
 
 
-class CreateEmergencyResponseSchema(ModelSchema):
-    emergency_type: GroupSchema
-
-    class Config:
-        model = Emergency
-        include = ["emergency_type"]
-
-
 class SeverityEnum(IntEnum):
     BAD = 1
     TERRIBLE = 2
     CATACLYSMIC = 3
+
+
+class CreateEmergencyResponseSchema(ModelSchema):
+    emergency_type: GroupPydanticEnum
+    manager: str
+    severity: SeverityEnum
+
+    class Config:
+        model = Emergency
+        include = ["emergency_type", "severity"]
 
 
 class SeveritySchema(BaseModel):
