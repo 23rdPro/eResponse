@@ -1,6 +1,7 @@
 from typing import Optional, List
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import Group
+from django.db import transaction
 from fastapi import UploadFile, Header, HTTPException, status
 from eResponse.response.models import Emergency, Brief, File
 from django.core.files.base import File as DjangoFile
@@ -98,11 +99,8 @@ def start_emergency_response_sync(**kwargs):
 
 
 @sync_to_async
-def create_brief_sync(files: list, brief_data: dict):
-    brief = Brief.objects.create(**brief_data)
-    brief.files.add(*files)
-    brief.save()
-    return brief
+def create_brief_sync(**kwargs):
+    return Brief.objects.create(**kwargs)
 
 
 @sync_to_async
@@ -229,4 +227,23 @@ def create_file_sync(path: str):
         file.file.save('media', d_type)
         file.save()
     return file
+
+
+@sync_to_async
+def get_model_object(**kwargs):
+    model = kwargs.pop("model")
+    return model.objects.get_or_create(**kwargs)[0]
+
+
+@sync_to_async
+def create_response_sync(**kwargs):
+    return Emergency.objects.create(**kwargs)
+
+
+@sync_to_async
+@transaction.atomic
+def transaction_atomic_file():
+    d_file = File()
+    d_file.save()
+    return d_file
 
