@@ -35,11 +35,11 @@ from fastapi.responses import RedirectResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2PasswordRequestFormStrict
 # from eResponse.urls import router
-from eResponse.user import models as user_models
 
 from starlette.responses import PlainTextResponse, RedirectResponse
 
 from eResponse.auth_token.FastAPI import schema as auth_token_schema
+from eResponse.user.models import User
 
 from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema, UserRegistrationSchema
 from eResponse import (
@@ -152,12 +152,17 @@ async def get_user(user_id: str):
 
 
 async def update_user(user: UserSchema, user_id: str):
-    curr_user = await filter_user_by_id(user_id)
-    schema = await sync_to_async(lambda: UserSchema.from_orm(curr_user))()
-    update_data = await sync_to_async(lambda: user.dict(exclude_unset=True))()
-    updated_user = await sync_to_async(lambda: schema.copy(update=update_data))()
-    await update_user_sync(curr_user, updated_user)
+    curr_user = await User.filters.afilter(id=user_id)
+    schema = await to_schema(curr_user, UserSchema)
+
+    # update_data = await sync_to_async(lambda: user.dict(exclude_unset=True))()
+    update_data = user.dict(exclude_unset=True)
+    # updated_user = await sync_to_async(lambda: schema.copy(update=update_data))()
+    updated_user = schema.copy(update=update_data)
+    await curr_user.aupdate(**updated_user)
+    # await update_user_sync(curr_user, updated_user)
     return updated_user
+
 
 
 async def delete_user(*, user_id: str):
