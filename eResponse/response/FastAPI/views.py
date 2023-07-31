@@ -50,7 +50,7 @@ async def init_response(
     e_brief = await create_brief_sync(**b_data)
 
     for file in files:
-        async with aiofiles.open(f"eResponse/media/{file.filename}", "wb") as media:
+        async with aiofiles.open(f"eResponse/media/responses/{file.filename}", "wb") as media:
             content = await file.read()
             await media.write(content)
         b_file = await transaction_atomic_file()
