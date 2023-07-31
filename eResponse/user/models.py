@@ -47,7 +47,7 @@ class User(
     is_available = models.BooleanField(_('Availability'), default=True)
 
     # personal info
-    title = models.CharField(_('Title'), max_length=128, blank=True)
+    # title = models.CharField(_('Title'), max_length=128, blank=True)
     email = models.EmailField(_('Email Address'), unique=True, max_length=255)
     name = models.CharField(_('Full Name'), max_length=128, blank=True)
     mobile = PhoneNumberField(blank=True)
@@ -175,10 +175,30 @@ def cert_path(certificate: Any, filename: str) -> Union[str, Callable, Path]:
 
 
 class Certification(mixins.TimeMixin, mixins.IDMixin):
-    title = models.CharField(_("Title"), max_length=128, )
+    qualification = models.CharField(_("Title"), max_length=128, )
     description = models.TextField(_('Describe achievement'), max_length=555)
     # department = models.Choices  # todo confirm from operations
     upload = models.FileField(upload_to=cert_path, blank=True, )
+
+    def save(self, *args, **kwargs):
+        filename = self.get_upload()
+        with open(filename, "rb") as upload:
+            self.upload.save(filename, upload, save=False)
+        return super(Certification, self).save(*args, **kwargs)
+
+    async def asave(self, *args, **kwargs):
+        return await sync_to_async(self.save)(*args, **kwargs)
+
+    def get_upload_path(self):
+        return os.path.basename(self.upload.name)
+
+    @staticmethod
+    def get_upload():
+        import glob
+        import os
+
+        files = glob.glob("eResponse/media/certificates/*")
+        return max(files, key=os.path.getctime)
 
 
 
