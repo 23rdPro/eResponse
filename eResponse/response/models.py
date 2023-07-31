@@ -122,7 +122,7 @@ class File(mixins.TimeMixin, mixins.IDMixin):
         import glob
         import os
 
-        files = glob.glob("eResponse/media/*")  # * means all, if specific format needed then *.csv
+        files = glob.glob("eResponse/media/response/*")  # * means all, if specific format needed then *.csv
         latest = max(files, key=os.path.getctime)
         print(">>>>>>>>>>>>>>>>>>>", latest)
         return latest
