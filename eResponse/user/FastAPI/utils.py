@@ -5,6 +5,7 @@ from asgiref.sync import sync_to_async
 from typing import Union
 from jose import jwt, JWTError
 from django.db import models
+from django.contrib.auth.models import Group
 from django.db.models.query import QuerySet
 from django.contrib.auth import authenticate
 from djantic.main import ModelSchema
@@ -145,4 +146,17 @@ def get_user_sync(**kwargs):
 
 
 @sync_to_async
-def bulk_create_objects()
+def create_group(obj: list[dict]):
+    # assert len(obj) == 1
+
+    return Group.objects.get_or_create(**obj.pop())[0]
+
+
+@sync_to_async
+def create_certificate(obj: list[dict]):
+    # assert len(obj) == 1
+
+    certification = user_models.Certification(**obj.pop())
+    certification.save()
+    return certification
+
