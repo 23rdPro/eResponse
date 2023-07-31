@@ -29,9 +29,21 @@ class UserRegistrationSchema(ModelSchema):
         include = ["email", "password"]
 
 
+class UpdateUserSchema(ModelSchema):
+    class Config:
+        model = models.User
+        include = ["email", "name", "mobile", ]
+
+
+class UpdateUserAvatar(ModelSchema):
+    class Config:
+        model = models.User
+        include = ["avatar", ]
+
+
 class UserSchema(ModelSchema):
-    groups: typing.List[GroupSchema] = []
-    certifications: typing.List[CertificationSchema] = []
+    groups: typing.List[GroupSchema]
+    certifications: typing.List[CertificationSchema]
     email: str or None = None
 
     class Config:
