@@ -63,6 +63,9 @@ class User(
         async def afilter(self, **kwargs):
             return await sync_to_async(self.filter)(**kwargs)
 
+        async def aget(self, *args, **kwargs):
+            return await sync_to_async(self.get)(*args, **kwargs)
+
         def get_users(self):  # get all users
             return self.prefetch_related('groups', 'certifications').all()
 
@@ -179,6 +182,8 @@ class Certification(mixins.TimeMixin, mixins.IDMixin):
     description = models.TextField(_('Describe achievement'), max_length=555)
     # department = models.Choices  # todo confirm from operations
     upload = models.FileField(upload_to=cert_path, blank=True, )
+
+    objects = models.Manager()
 
     def save(self, *args, **kwargs):
         filename = self.get_upload()
