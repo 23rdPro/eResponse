@@ -57,7 +57,9 @@ from .utils import (
     create_access_token_sync, create_user_sync, get_user_from_token,
     authenticate_user, to_schema, get_all_users,
     filter_user_by_id, jwt_decode, update_user_sync, activate_user_sync,
-    get_object_token, get_user_from_payload, get_user_sync, bulk_create_objects
+    get_object_token, get_user_from_payload, get_user_sync, create_group,
+    create_certificate,
+
 )
 
 URL = ""
@@ -100,7 +102,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
 
 async def get_current_active_user(
-        current_user: Annotated[UserSchema, Depends(get_current_user)]
+        current_user: Annotated[User, Depends(get_current_user)]
 ):
     if current_user.is_active:
         return current_user
@@ -158,29 +160,35 @@ CurrentUser = Depends(get_current_user)
 async def update_user(
         curr: Annotated[User, CurrentUser],
         user: UserSchema = Depends(),
-        # group: GroupSchema = Depends(),
-        # certification: CertificationSchema = Depends(),
-        file: UploadFile = File(...)
-):
-    curr_user = await User.filters.afilter(id=curr.id)
-    schema = await to_schema(curr_user, UserSchema)
+):  # todo cannot use latest file + update certificate and group separately
+    pass
 
-    update_data = user.dict(exclude_unset=True)
-    groups = await bulk_create_objects(update_data.pop("groups"))
+    # curr_user = await User.filters.afilter(id=curr.id)
+    #
+    # update_data = user.dict(exclude_unset=True)
+    #
+    # group = await create_group(update_data.pop("groups"))
+    # with aiofiles.open(f"eResponse/media/certificates/{file.filename}", "wb") as certificate:
+    #     content = await file.read()
+    #     await certificate.write(content)
+    #
+    # cert = await create_certificate(update_data.pop("certifications"))
+    #
+    # update_data = {k: v for k, v in update_data.items() if v}
+    # await curr_user.aupdate(**update_data)
+    # temp = await curr_user.aget()
+    # await sync_to_async(lambda: temp.groups.add(group))()
+    # await sync_to_async(lambda: temp.certifications.add(cert))()
+    #
+    # return await to_schema(temp, UserSchema)
 
-    with aiofiles.open(f"eResponse/media/certificates/{file.filename}", "wb") as certificate:
-        content = await file.read()
-        await certificate.write(content)
 
-    certifications = await bulk_create_objects(update_data.pop("certifications"))
-    update_data = {k: v for k, v in update_data.items() if v}
+async def update_user_group():
+    pass
 
 
-
-    # updated_user = schema.copy(update_data)
-
-    # await curr_user.aupdate(**updated_user)
-    # return updated_user
+async def update_user_certification():
+    pass
 
 
 async def delete_user(*, user_id: str):
