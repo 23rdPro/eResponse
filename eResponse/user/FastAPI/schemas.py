@@ -6,15 +6,21 @@ from eResponse.user import models
 
 
 class GroupSchema(ModelSchema):
+    name: str
+
     class Config:
         model = Group
         include = ['name', ]
 
 
 class CertificationSchema(ModelSchema):
+    qualification: str or None = None
+    description: str or None = None
+    # upload: str
+
     class Config:
         model = models.Certification
-        include = ['title', 'description', 'upload']
+        include = ['qualification', 'description', ]
 
 
 class UserRegistrationSchema(ModelSchema):
@@ -24,15 +30,13 @@ class UserRegistrationSchema(ModelSchema):
 
 
 class UserSchema(ModelSchema):
-    is_active: bool
-    groups: typing.List[GroupSchema]
-    certifications: typing.List[CertificationSchema]
-    # avatar: typing.Optional[str] = None todo
+    groups: typing.List[GroupSchema] = []
+    certifications: typing.List[CertificationSchema] = []
+    email: str or None = None
 
     class Config:
         model = models.User
-        include = ['id', 'email', "name", "is_active",
-                   "is_superuser", "is_staff", "groups",
-                   "is_available", "title", "mobile",
-                   "certifications", ]
-
+        # fastapi model id field exclude from request todo
+        include = ['email', "name", "groups", "is_available",
+                   "mobile", "certifications",
+                   ]
