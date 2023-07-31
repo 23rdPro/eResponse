@@ -41,7 +41,7 @@ router.post("/users/{token}/activate", status_code=status.HTTP_200_OK, tags=user
 
 router.get("/users/{user_id}", status_code=status.HTTP_200_OK, tags=users)(views.get_user)
 
-router.patch("/users/{user_id}", status_code=status.HTTP_200_OK, tags=users)(views.update_user)
+router.patch("/users/me/update", status_code=status.HTTP_200_OK, tags=users)(views.update_user)
 
 router.delete("/users/{user_id}", summary="delete current user",
               status_code=status.HTTP_204_NO_CONTENT, tags=users
