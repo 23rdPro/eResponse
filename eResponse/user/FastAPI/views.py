@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import aiofiles
 from datetime import timedelta, datetime
 
 from rest_framework.authtoken.models import Token
@@ -30,7 +31,7 @@ from django.db.models.query import QuerySet
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth import authenticate, login as user_login
 
-from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, status
+from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, status, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2PasswordRequestFormStrict
@@ -41,7 +42,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from eResponse.auth_token.FastAPI import schema as auth_token_schema
 from eResponse.user.models import User
 
-from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema, UserRegistrationSchema
+from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema, UserRegistrationSchema, CertificationSchema
 from eResponse import (
     oauth2_scheme,
     pwd_context,
@@ -56,7 +57,7 @@ from .utils import (
     create_access_token_sync, create_user_sync, get_user_from_token,
     authenticate_user, to_schema, get_all_users,
     filter_user_by_id, jwt_decode, update_user_sync, activate_user_sync,
-    get_object_token, get_user_from_payload, get_user_sync
+    get_object_token, get_user_from_payload, get_user_sync, bulk_create_objects
 )
 
 URL = ""
@@ -151,18 +152,35 @@ async def get_user(user_id: str):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
 
 
-async def update_user(user: UserSchema, user_id: str):
-    curr_user = await User.filters.afilter(id=user_id)
+CurrentUser = Depends(get_current_user)
+
+
+async def update_user(
+        curr: Annotated[User, CurrentUser],
+        user: UserSchema = Depends(),
+        # group: GroupSchema = Depends(),
+        # certification: CertificationSchema = Depends(),
+        file: UploadFile = File(...)
+):
+    curr_user = await User.filters.afilter(id=curr.id)
     schema = await to_schema(curr_user, UserSchema)
 
-    # update_data = await sync_to_async(lambda: user.dict(exclude_unset=True))()
     update_data = user.dict(exclude_unset=True)
-    # updated_user = await sync_to_async(lambda: schema.copy(update=update_data))()
-    updated_user = schema.copy(update=update_data)
-    await curr_user.aupdate(**updated_user)
-    # await update_user_sync(curr_user, updated_user)
-    return updated_user
+    groups = await bulk_create_objects(update_data.pop("groups"))
 
+    with aiofiles.open(f"eResponse/media/certificates/{file.filename}", "wb") as certificate:
+        content = await file.read()
+        await certificate.write(content)
+
+    certifications = await bulk_create_objects(update_data.pop("certifications"))
+    update_data = {k: v for k, v in update_data.items() if v}
+
+
+
+    # updated_user = schema.copy(update_data)
+
+    # await curr_user.aupdate(**updated_user)
+    # return updated_user
 
 
 async def delete_user(*, user_id: str):
