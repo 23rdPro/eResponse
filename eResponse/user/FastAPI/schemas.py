@@ -1,6 +1,8 @@
+import re
 import typing
 
 from django.contrib.auth.models import Group
+from pydantic import BaseModel, validator
 from djantic import ModelSchema
 from eResponse.user import models
 
@@ -29,10 +31,30 @@ class UserRegistrationSchema(ModelSchema):
         include = ["email", "password"]
 
 
+class MobilePhoneFieldSchema(BaseModel):
+    phone_number: typing.Optional[str]
+
+    @classmethod
+    @validator("phone_number")
+    def phone_number_validation(cls, v):
+        regex = r"^(\+)[1-9][0-9\-\(\)\.]{9,15}$"
+        if v and not re.search(regex, v, re.I):
+            raise ValueError("Phone number invalid")
+        return str(v)
+
+    class Config:
+        orm_mode = True
+        use_enum_values = True
+
+
 class UpdateUserSchema(ModelSchema):
+    is_available: bool or None = None
+    is_active: bool or None = None
+    mobile: MobilePhoneFieldSchema or None = None
+
     class Config:
         model = models.User
-        include = ["email", "name", "mobile", ]
+        include = ["name", "mobile", "is_available", "is_active"]
 
 
 class UpdateUserAvatar(ModelSchema):
