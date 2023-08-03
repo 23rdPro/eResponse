@@ -43,6 +43,10 @@ router.get("/users/{user_id}", status_code=status.HTTP_200_OK, tags=users)(views
 
 router.patch("/users/me/update", status_code=status.HTTP_200_OK, tags=users)(views.update_user)
 
+router.put("/users/me/group/update", status_code=status.HTTP_200_OK, tags=users)(views.update_user_group)
+
+router.put("/users/me/certification/update", status_code=status.HTTP_200_OK, tags=users)(views.update_user_certification)
+
 router.delete("/users/{user_id}", summary="delete current user",
               status_code=status.HTTP_204_NO_CONTENT, tags=users
               )(views.delete_user)
