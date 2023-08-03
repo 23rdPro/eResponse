@@ -50,14 +50,16 @@ class User(
     # title = models.CharField(_('Title'), max_length=128, blank=True)
     email = models.EmailField(_('Email Address'), unique=True, max_length=255)
     name = models.CharField(_('Full Name'), max_length=128, blank=True)
-    mobile = PhoneNumberField(blank=True)
+    # mobile = PhoneNumberField(blank=True) TODO
+    mobile = models.CharField(_("Mobile"), max_length=15, blank=True)
     certifications = models.ManyToManyField("Certification",
                                             related_name='certificates',
                                             blank=True)
     avatar = models.FileField(upload_to=avatars_path, blank=True)
 
     # objects = models.Manager()
-    objects = UserManager()
+    # objects = UserManager()
+    objects = managers.UserManager()
 
     class UserQueryset(models.QuerySet):
         async def afilter(self, **kwargs):
