@@ -33,8 +33,6 @@ def jwt_decode(token):
 
 @sync_to_async
 def to_schema(django_obj: Union[type(models), type(QuerySet)], schema: ModelSchema):
-    print(django_obj, type(django_obj))
-    print(django_obj.get().mobile.__str__(), type(django_obj.get().mobile.__str__()))
     if hasattr(django_obj, "count"):
         if django_obj.count() > 1:
             return schema.from_django(django_obj, many=True)
@@ -144,17 +142,13 @@ def get_user_sync(**kwargs):
 
 
 @sync_to_async
-def create_group(obj: list[dict]):
-    # assert len(obj) == 1
-
-    return Group.objects.get_or_create(**obj.pop())[0]
+def create_group(**kwargs):
+    return Group.objects.get_or_create(**kwargs)[0]
 
 
 @sync_to_async
-def create_certificate(obj: list[dict]):
-    # assert len(obj) == 1
-
-    certification = user_models.Certification(**obj.pop())
+def create_certificate(**kwargs):
+    certification = user_models.Certification(**kwargs)
     certification.save()
     return certification
 
