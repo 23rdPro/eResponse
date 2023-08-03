@@ -42,7 +42,13 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from eResponse.auth_token.FastAPI import schema as auth_token_schema
 from eResponse.user.models import User
 
-from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema, UserRegistrationSchema, CertificationSchema
+from eResponse.user.FastAPI.schemas import (
+    UserSchema,
+    GroupSchema,
+    UserRegistrationSchema,
+    CertificationSchema,
+    UpdateUserSchema,
+)
 from eResponse import (
     oauth2_scheme,
     pwd_context,
@@ -159,9 +165,17 @@ CurrentUser = Depends(get_current_user)
 
 async def update_user(
         curr: Annotated[User, CurrentUser],
-        user: UserSchema = Depends(),
+        user: UpdateUserSchema = Depends(),
 ):  # todo cannot use latest file + update certificate and group separately
-    pass
+    curr_user = await User.filters.afilter(id=curr.id)
+    data = user.dict(exclude_unset=True)
+    data = {k: v for k, v in data.items() if v is not None}
+    data["mobile"] = data.get("mobile").get("phone_number")
+
+    await curr_user.aupdate(**data)
+
+    return await to_schema(curr_user, UserSchema)
+
 
     # curr_user = await User.filters.afilter(id=curr.id)
     #
