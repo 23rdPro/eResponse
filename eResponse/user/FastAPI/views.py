@@ -20,16 +20,16 @@ from djantic import ModelSchema
 from jose import jwt, JWTError
 
 
-from django.conf import settings
-from django.contrib.auth.models import Group
+# from django.conf import settings
+# from django.contrib.auth.models import Group
 # from django.contrib.auth import get_user_model
-from django.views.decorators.http import require_http_methods, require_safe
-from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse, HttpRequest
-from django.db import transaction, models
-from django.db.models.query import QuerySet
-from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth import authenticate, login as user_login
+# from django.views.decorators.http import require_http_methods, require_safe
+# from django.views.decorators.csrf import csrf_protect
+# from django.http import JsonResponse, HttpRequest
+# from django.db import transaction, models
+# from django.db.models.query import QuerySet
+# from django.core.exceptions import ObjectDoesNotExist
+# from django.contrib.auth import authenticate, login as user_login
 
 from fastapi import Request, HTTPException, Depends, FastAPI, Response, File, status, UploadFile
 from fastapi.responses import RedirectResponse
@@ -51,9 +51,6 @@ from eResponse.user.FastAPI.schemas import (
 )
 from eResponse import (
     oauth2_scheme,
-    pwd_context,
-    ALGORITHM,
-    API_SECRET_KEY,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES,
     PREFIX
@@ -71,7 +68,7 @@ from .utils import (
 URL = ""
 
 
-async def create_user(*, new_user: UserRegistrationSchema):
+async def create_user(*, new_user: UserRegistrationSchema = Depends()):
     user = await create_user_sync(**new_user.dict())
     token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
     access_token = await create_access_token_sync({"sub": user.email}, expires_delta=token_expires)
@@ -170,39 +167,39 @@ async def update_user(
     curr_user = await User.filters.afilter(id=curr.id)
     data = user.dict(exclude_unset=True)
     data = {k: v for k, v in data.items() if v is not None}
-    data["mobile"] = data.get("mobile").get("phone_number")
 
     await curr_user.aupdate(**data)
-
     return await to_schema(curr_user, UserSchema)
 
 
-    # curr_user = await User.filters.afilter(id=curr.id)
-    #
-    # update_data = user.dict(exclude_unset=True)
-    #
-    # group = await create_group(update_data.pop("groups"))
-    # with aiofiles.open(f"eResponse/media/certificates/{file.filename}", "wb") as certificate:
-    #     content = await file.read()
-    #     await certificate.write(content)
-    #
-    # cert = await create_certificate(update_data.pop("certifications"))
-    #
-    # update_data = {k: v for k, v in update_data.items() if v}
-    # await curr_user.aupdate(**update_data)
-    # temp = await curr_user.aget()
-    # await sync_to_async(lambda: temp.groups.add(group))()
-    # await sync_to_async(lambda: temp.certifications.add(cert))()
-    #
-    # return await to_schema(temp, UserSchema)
+async def update_user_group(
+        user: Annotated[User, CurrentUser],
+        group: GroupSchema = Depends()
+):
+    curr = await User.filters.afilter(id=user.id)
+    created_group = await create_group(group.dict().get("name"))
+
+    temp = await curr.aget()
+
+    await sync_to_async(lambda: temp.groups.add(created_group))()
+
+    return await to_schema(temp, UserSchema)
 
 
-async def update_user_group():
-    pass
+async def update_user_certification(
+        user: Annotated[User, CurrentUser],
+        certification: CertificationSchema = Depends(),
+        file: UploadFile = File(...)
+):
+    curr = await User.filters.afilter(id=user.id)
+    with aiofiles.open(f"eResponse/media/certificates/{file.filename}", "wb") as FILE:
+        content = await file.read()
+        await FILE.write(content)
 
+    cert = await create_certificate(certification.dict())
+    temp = await curr.aget()
 
-async def update_user_certification():
-    pass
+    await sync_to_async(lambda: temp.certifications.add(cert))()
 
 
 async def delete_user(*, user_id: str):
