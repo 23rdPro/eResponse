@@ -66,6 +66,9 @@ class User(
         async def aget(self, *args, **kwargs):
             return await sync_to_async(self.get)(*args, **kwargs)
 
+        async def aupdate(self, **kwargs):
+            return await super().aupdate(**kwargs)
+
         def get_users(self):  # get all users
             return self.prefetch_related('groups', 'certifications').all()
 
