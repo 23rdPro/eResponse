@@ -57,6 +57,11 @@ async def init_response(
         await sync_to_async(lambda: e_brief.files.add(b_file))()
 
     action_dict = action.dict()
+
+    """
+    emergency_type in action_data should be presented in a preset choicefield
+    meaning new member is added to the Group type automatically..
+    """
     action_data = {
         "emergency_type": await aget_or_create(
             **{"name": action_dict["emergency_type"], "model": Group}
@@ -65,7 +70,11 @@ async def init_response(
 
     }
     response = await create_response_sync(**action_data)
+
+    # add manager: user
     await sync_to_async(lambda: response.respondents.add(manager))()
+
+    # add brief: compulsory
     await sync_to_async(lambda: response.briefs.add(e_brief))()
 
     return await to_schema(response, EmergencySchema)
@@ -93,6 +102,12 @@ def delete_response():
 
 
 async def get_responses(user: Annotated[str, CurrentActiveUser]):
+    queryset = await Emergency.filters.aget_all_emergencies()
+
+    if queryset:
+        return await to_schema(queryset, EmergencySchema)
+
+
     # files = await sync_to_async(lambda: models.File.objects.all())()
     # # await sync_to_async(lambda: print(files))()
     # async for file in files:
@@ -100,8 +115,8 @@ async def get_responses(user: Annotated[str, CurrentActiveUser]):
 
     # return await to_schema(files, FileSchema)
 
-    ids = []
-    responses = await get_responses_sync()
+    # ids = []
+    # responses = await get_responses_sync()
     # async for response in responses:
     #     async for brief in response.briefs:
     #         file = brief.
