@@ -41,35 +41,6 @@ def start_emergency_sync(manager: User, files: List[UploadFile],
     emergency_instance.briefs.add(brief_instance)
     return emergency_instance
 
-    # pass
-    # print(Emergency.objects.filter(id=schema.dict().get(id)))
-    # print(Emergency.objects.all())
-    # await sync_to_async(lambda: print(Emergency.objects.filter(id=schema.get(id))))()
-    # emergency = Emergency.objects.get_or_create(schema.get(id))
-
-    # assert manager.id in list(d['id'] for d in schema.get("respondents"))
-
-    # _new = {}
-    # emergency_type = respondents = briefs = None
-    #
-    # for field in schema:
-    #     if field == "emergency_type":
-    #         emergency_type = Group.objects.get(name=schema.get(field))
-    #     elif field == "respondents":
-    #         respondents = [User.objects.get(id=respondent.get(id))
-    #                        for respondent in schema.get(field)]
-    #     elif field == "briefs":
-    #         briefs = [Brief.objects.get(id=brief.get(id))
-    #                   for brief in schema.get(field)]
-    #     else:
-    #         _new.update(dict([(field, schema.get(field))]))
-    #
-    # emergency = Emergency(**_new)
-    # emergency.save()
-    # emergency.emergency_type.add(emergency_type)
-    # emergency.respondents.add(*respondents)
-    # emergency.briefs.add(*briefs)
-
 
 @sync_to_async
 def create_brief():
@@ -78,7 +49,6 @@ def create_brief():
 
 @sync_to_async
 def start_emergency_response_sync(**kwargs):
-    # emergency_type_to_dict = kwargs.get("emergency_type").dict()  # Group
     emergency_to_dict = kwargs.get("emergency").dict()
     emergency_data = {
         "emergency_type": Group.objects.get_or_create(
@@ -90,9 +60,9 @@ def start_emergency_response_sync(**kwargs):
 
     # however a manager must instantiate this model hence"... from model
     emergency_instance.respondents.add(kwargs.get("manager"))
-    # respondents cannot be blank, but because we need to wait for files
-    # before creating emergency leading to response redirect after successive segments:
-    # we made briefs accept blank in model to allow us ultimately call save() on emergency
+    # respondents cannot be blank, but because need to wait for files before
+    # creating emergency leading to response redirect after successive segments:
+    # made briefs accept blank in model to allow us ultimately call save() on emergency
 
     emergency_instance.save()
     return emergency_instance
@@ -147,36 +117,6 @@ def create_files_sync(files: List[str],):
             filez.append(fz)
     return filez
 
-    #         my_file.save()
-    #         # await sync_to_async(lambda: my_file.save())()
-    #         filez.append(my_file)
-    # return filez
-
-    #         filez.append(File(file=DjangoFile(fx)))
-    # filez = File.objects.bulk_create(*filez)
-    # return filez
-
-    # filez = []
-    # for file_path in files:
-    #     with open(file_path, 'r') as file:
-    #         filez.append(File.objects.create(file=file))
-    # return filez
-
-    # print(files, ">>>>>>>>>>>>>>>>>>>>>>>.")
-    # # for f in files:
-    #     # print(f.read())
-    #     # print(f.filename, type(f.file), f.size)
-    #     # with open(f.filename, 'r') as fg:
-    #     #     print(fg.readlines())
-    #     # print(dir(f.file))
-    # filez = File.objects.bulk_create([file.file for file in files])
-    # print(type(filez), "files_obj>>>>>>>>>>>>>")
-    # return filez
-    # emergency = Emergency.objects.get(id=emergency_id)
-    # emergency.briefs.files.add(*filez)
-    # emergency.save()
-    # return emergency
-
 
 @sync_to_async
 def create_emergency_response_sync(e_data: dict, brief: Brief, user: User):
@@ -185,38 +125,6 @@ def create_emergency_response_sync(e_data: dict, brief: Brief, user: User):
     emergency.briefs.add(brief)
     emergency.save()
     return emergency
-
-    # emergency_type = Group.objects.get_or_create(e_data.get("emergency_type").get("name"))[0]
-    # severity = e_data.get("severity")
-    #
-    # brief_data = {"title": e_data.get("briefs")[0].get("title"),
-    #               "text": e_data.get("briefs")[0].get("text"), "reporter": user}
-    # brief = Brief.objects.create(**brief_data)
-    #
-    # filez = File.objects.bulk_create([file.file for file in files])
-    # print(type(filez), "files_obj>>>>>>>>>>>>>")
-    # brief.files.add(*filez)
-    #
-    # emergency = Emergency.objects.create(emergency_type=emergency_type, severity=severity)
-    # emergency.respondents.add(user)
-    # emergency.briefs.add(brief)
-    # emergency.save()
-    #
-    # return emergency
-
-
-@sync_to_async
-def schema_to_dict(schema: ModelSchema) -> dict:
-    return schema.dict()
-
-
-@sync_to_async
-def brief_data_from_e_dict_sync(emg_dict: dict, user: User) -> dict:
-    return {
-        "reporter": user,
-        "title": emg_dict.get("briefs")[0].get("title"),
-        "text": emg_dict.get("briefs")[0].get("text"),
-    }
 
 
 @sync_to_async
@@ -244,8 +152,8 @@ def create_response_sync(**kwargs):
 @transaction.atomic
 def transaction_atomic_file():
     d_file = File()
-    d_file.save()
-    return d_file
+    # d_file.save()  # noqa
+    return d_file.save()
 
 
 @sync_to_async
