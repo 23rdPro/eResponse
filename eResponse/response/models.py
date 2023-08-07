@@ -40,14 +40,16 @@ class Emergency(mixins.TimeMixin, mixins.IDMixin):
 
     class EmergencyQuerySet(models.QuerySet):
         def get_all_emergencies(self):
-            self.afilter()
             return self.select_related(
                 "emergency_type"
             ).prefetch_related("respondents", "briefs").all()
 
-        async def afilter(self):
+        async def aget_all_emergencies(self):
+            return await sync_to_async(list)(self.get_all_emergencies())
 
-            return await sync_to_async(self.filter)()
+
+        # async def afilter(self):
+        #     return await sync_to_async(self.filter)()
 
         def get_all_experts(self):
             return self.filter(respondents__groups__name='experts').all()
