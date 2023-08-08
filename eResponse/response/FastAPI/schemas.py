@@ -1,30 +1,28 @@
 from __future__ import annotations
 
+import os
 from enum import Enum, IntEnum
-from typing import List, Optional
+from typing import List
 from djantic import ModelSchema
-from pydantic.main import BaseModel
-from pydantic import FilePath
+# from pydantic.main import BaseModel
+from pydantic import BaseModel, FilePath
 from eResponse.response.models import File, Brief, Emergency
-from eResponse.user.FastAPI.schemas import UserSchema, GroupSchema
+from eResponse.user.FastAPI.schemas import UserSchema
+
+
+# for file in os.listdir():
+
+# class FileFieldPydantic(BaseModel):
+#     file: FilePath = ""
 
 
 class FileSchema(ModelSchema):
-    file: str
+    # file: FileFieldPydantic
 
     class Config:
         model = File
-        include = ["id", str("file")]
-
-
-class BriefSchema(ModelSchema):
-    title: str
-    text: str
-    # files: List[FileSchema]
-
-    class Config:
-        model = Brief
-        include = ["title", "text", ]  # files
+        include = ["id", ]  # TODO
+        arbitrary_types_allowed = True
 
 
 class EmergencyBriefSchema(ModelSchema):
@@ -75,8 +73,8 @@ class CreateEmergencyResponseSchema(ModelSchema):
 
 class SeveritySchema(BaseModel):
     BAD: SeverityEnum = SeverityEnum.BAD
-    # TERRIBLE: SeverityEnum = SeverityEnum.TERRIBLE
-    # CATACLYSMIC: SeverityEnum = SeverityEnum.CATACLYSMIC
+    TERRIBLE: SeverityEnum = SeverityEnum.TERRIBLE
+    CATACLYSMIC: SeverityEnum = SeverityEnum.CATACLYSMIC
 
 
 class GroupPydanticSchema(BaseModel):
@@ -85,9 +83,8 @@ class GroupPydanticSchema(BaseModel):
 
 
 class BriefPydanticSchema(BaseModel):
-    title: str
-    text: str
-    files: List[bytes]
+    brief_title: str
+    brief_text: str
 
 
 class CreateEmergencyPydanticSchema(BaseModel):
