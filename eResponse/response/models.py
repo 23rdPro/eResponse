@@ -9,6 +9,7 @@ from asgiref.sync import sync_to_async
 from eResponse import mixins
 from django.db import models
 from django.db.models import Q
+from django.core.files import File as FileDjango
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
@@ -39,6 +40,9 @@ class Emergency(mixins.TimeMixin, mixins.IDMixin):
     )
 
     class EmergencyQuerySet(models.QuerySet):
+        # def get_all_files(self, instance):
+        #     return self.get_all_emergencies().filter(id=(self.id))
+
         def get_all_emergencies(self):
             return self.select_related(
                 "emergency_type"
@@ -47,9 +51,8 @@ class Emergency(mixins.TimeMixin, mixins.IDMixin):
         async def aget_all_emergencies(self):
             return await sync_to_async(list)(self.get_all_emergencies())
 
-
-        # async def afilter(self):
-        #     return await sync_to_async(self.filter)()
+        async def afilter(self, *args, **kwargs):
+            return await sync_to_async(self.filter)(*args, **kwargs)
 
         def get_all_experts(self):
             return self.filter(respondents__groups__name='experts').all()
@@ -96,28 +99,36 @@ class File(mixins.TimeMixin, mixins.IDMixin):
     file = models.FileField(upload_to="files/%Y/%m/%d/")
     objects = models.Manager()
 
+    class FileQueryset(models.QuerySet):
+        async def afilter(self, *args, **kwargs):
+            return await sync_to_async(self.filter)(*args, **kwargs)
+
+    filters = FileQueryset.as_manager()
+
     def get_file_path_name(self):
         return os.path.basename(self.file.name)
 
     def __str__(self):
         return self.get_file_path_name()
 
-    def save(self, *args, **kwargs):
-        filename = self.generate_file()
-        with open(filename, "rb") as f:
-            self.file.save(filename, f, save=False)
-        # delete file when done todo
-        return super(File, self).save(*args, **kwargs)
-
-    async def asave(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
+    def save(
+        self, force_insert=False,
+            force_update=False,
+            using=None,
+            update_fields=None
     ):
-        return await sync_to_async(self.save)(
-            force_insert=force_insert,
-            force_update=force_update,
-            using=using,
-            update_fields=update_fields,
-        )
+        filename = self.generate_file()
+        with open(filename, "rb") as copy_brief:
+            self.file = FileDjango(copy_brief)
+
+            instance = super(File, self).save(
+                force_insert=False,
+                force_update=False,
+                using=None,
+                update_fields=None
+            )
+
+        return instance
 
     @staticmethod
     def generate_file():
