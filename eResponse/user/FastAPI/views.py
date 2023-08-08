@@ -29,10 +29,11 @@ from eResponse import (
     LOGIN_ACCESS_TOKEN_EXPIRE_MINUTES,
     PREFIX
 )
+from eResponse.api_helpers import to_schema
 
 from .utils import (
     create_access_token_sync, create_user_sync, get_user_from_token,
-    authenticate_user, to_schema, get_all_users,
+    authenticate_user, get_all_users,
     filter_user_by_id, jwt_decode, get_user_from_payload,
     get_user_sync, create_group, create_certificate,
 
