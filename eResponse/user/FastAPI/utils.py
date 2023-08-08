@@ -51,18 +51,18 @@ def jwt_decode(token):
     )
 
 
-@sync_to_async
-def to_schema(
-        django_obj: Union[type(models), type(QuerySet)],
-        schema: ModelSchema
-):
-    if hasattr(django_obj, "count"):
-        if django_obj.count() > 1:
-            return schema.from_django(django_obj, many=True)
-
-        return schema.from_orm(django_obj.get())
-
-    return schema.from_orm(django_obj)
+# @sync_to_async
+# def to_schema(
+#         django_obj: Union[type(models), type(QuerySet)],
+#         schema: ModelSchema
+# ):
+#     if hasattr(django_obj, "count"):
+#         if django_obj.count() > 1:
+#             return schema.from_django(django_obj, many=True)
+#
+#         return schema.from_orm(django_obj.get())
+#
+#     return schema.from_orm(django_obj)
 
 
 @sync_to_async
