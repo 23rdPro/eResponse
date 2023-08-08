@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Optional, List
 
 import aiofiles
@@ -9,7 +10,7 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from eResponse.response import RESPONSE_PREFIX
 from .schemas import (
     EmergencySchema,
-    BriefSchema,
+    BriefPydanticSchema,
     FileSchema,
     CreateEmergencyPydanticSchema,
     CreateEmergencyResponseSchema,
@@ -23,6 +24,7 @@ from .utils import (
     create_response_sync,
     transaction_atomic_file,
     get_responses_sync,
+    get_emergency_sync,
 )
 from eResponse.response import models
 from eResponse import oauth2_scheme, PREFIX
@@ -38,23 +40,32 @@ CurrentUser = Depends(oauth2_scheme)
 CurrentActiveUser = Depends(get_current_user)
 
 
+async def get_emergency_files(user: Annotated[str, CurrentActiveUser], response_id: str):
+    emergency = await get_emergency_sync(response_id)
+    files_id = await sync_to_async(lambda: [f.id for b in emergency.briefs.all() for f in b.files.all()])()
+    files = await models.File.filters.afilter(id__in=files_id)
+    return await sync_to_async(lambda: FileSchema.from_django(files, many=True))()
+
+
 async def init_response(
         manager: Annotated[str, CurrentActiveUser],
         action: CreateEmergencyResponseSchema = Depends(),
-        brief: BriefSchema = Depends(),
+        brief: BriefPydanticSchema = Depends(),
         files: List[UploadFile] = File(...),
 ):
 
     b_data_dict = brief.dict()
-    b_data = {"title": b_data_dict["title"], "text": b_data_dict["text"], "reporter": manager}
+    b_data = {"title": b_data_dict["brief_title"], "text": b_data_dict["brief_text"], "reporter": manager}
     e_brief = await create_brief_sync(**b_data)
 
     for file in files:
         async with aiofiles.open(f"eResponse/media/responses/{file.filename}", "wb") as media:
             content = await file.read()
             await media.write(content)
-        b_file = await transaction_atomic_file()
-        await sync_to_async(lambda: e_brief.files.add(b_file))()
+
+        d_file = models.File()
+        await d_file.asave()
+        await sync_to_async(lambda: e_brief.files.add(d_file))()
 
     action_dict = action.dict()
 
@@ -76,8 +87,11 @@ async def init_response(
 
     # add brief: compulsory
     await sync_to_async(lambda: response.briefs.add(e_brief))()
+    # FileSchema.update_forward_refs()
 
-    return await to_schema(response, EmergencySchema)
+    await sync_to_async(lambda: print(EmergencySchema.from_orm(response).json()))()
+
+    return await sync_to_async(lambda: EmergencySchema.from_orm(response))()
 
 
 async def update_response(
@@ -108,27 +122,5 @@ async def get_responses(user: Annotated[str, CurrentActiveUser]):
         return await to_schema(queryset, EmergencySchema)
 
 
-    # files = await sync_to_async(lambda: models.File.objects.all())()
-    # # await sync_to_async(lambda: print(files))()
-    # async for file in files:
-    #     await sync_to_async(lambda: print(file, file.file))()
-
-    # return await to_schema(files, FileSchema)
-
-    # ids = []
-    # responses = await get_responses_sync()
-    # async for response in responses:
-    #     async for brief in response.briefs:
-    #         file = brief.
-
-    # await sync_to_async(lambda: print(len(responses), len(_responses)))()
-
-    # return await to_schema(responses, EmergencySchema)
-
-
-
 def get_response():
     pass
-
-
-
