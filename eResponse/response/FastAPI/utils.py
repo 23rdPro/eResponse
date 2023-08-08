@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional, List
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import Group
@@ -152,11 +153,18 @@ def create_response_sync(**kwargs):
 @transaction.atomic
 def transaction_atomic_file():
     d_file = File()
-    # d_file.save()  # noqa
-    return d_file.save()
+    d_file.save()  # noqa
+    return d_file
 
 
 @sync_to_async
 def get_responses_sync():
     return Emergency.filters.get_all_emergencies()
 
+
+@sync_to_async
+def get_emergency_sync(e_id: str):
+    queryset = Emergency.filters.get_all_emergencies().filter(id=e_id)
+    if queryset.exists():
+        return queryset.get()
+    return
