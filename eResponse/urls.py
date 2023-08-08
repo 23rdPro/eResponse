@@ -14,6 +14,7 @@ from eResponse.response.FastAPI.views import (
     init_response,
     update_response,
     get_responses,
+    get_emergency_files,
 )
 
 
@@ -72,6 +73,7 @@ router.delete("/users/{user_id}", summary="delete current user",
 
 router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(init_response)
 router.get("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(get_responses)
+router.get("/emergencies/{response_id}/files", status_code=status.HTTP_200_OK, tags=responses)(get_emergency_files)
 router.patch("/emergencies/{response_id}", status_code=status.HTTP_200_OK, tags=responses)(update_response)
 
 
