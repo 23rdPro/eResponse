@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import typing
 from enum import Enum, IntEnum
 from typing import List
 from djantic import ModelSchema
@@ -71,6 +72,15 @@ class CreateEmergencyResponseSchema(ModelSchema):
         include = ["emergency_type", "severity"]
 
 
+class UpdateEmergencyResponseSchema(ModelSchema):
+    emergency_type: typing.Optional[str] = None
+    severity: typing.Optional[int] = None
+
+    class Config:
+        model = Emergency
+        include = ["emergency_type", "severity"]
+
+
 class SeveritySchema(BaseModel):
     BAD: SeverityEnum = SeverityEnum.BAD
     TERRIBLE: SeverityEnum = SeverityEnum.TERRIBLE
@@ -85,6 +95,11 @@ class GroupPydanticSchema(BaseModel):
 class BriefPydanticSchema(BaseModel):
     brief_title: str
     brief_text: str
+
+
+class UpdateBriefPydanticSchema(BaseModel):
+    brief_title: typing.Optional[str] = None
+    brief_text: typing.Optional[str] = None
 
 
 class CreateEmergencyPydanticSchema(BaseModel):

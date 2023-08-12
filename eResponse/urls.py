@@ -15,6 +15,7 @@ from eResponse.response.FastAPI.views import (
     update_response,
     get_responses,
     get_emergency_files,
+    oomph,
 )
 
 
@@ -75,6 +76,7 @@ router.post("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(init
 router.get("/emergencies", status_code=status.HTTP_200_OK, tags=responses)(get_responses)
 router.get("/emergencies/{response_id}/files", status_code=status.HTTP_200_OK, tags=responses)(get_emergency_files)
 router.patch("/emergencies/{response_id}", status_code=status.HTTP_200_OK, tags=responses)(update_response)
+router.get("/emergencies/oomph", status_code=status.HTTP_200_OK, tags=responses)(oomph)
 
 
 
