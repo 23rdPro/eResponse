@@ -1,8 +1,10 @@
+import functools
+import typing
 import uuid
 from typing import Annotated, Optional, List
 
 import aiofiles
-from fastapi import Depends, File, UploadFile, status
+from fastapi import Depends, File, UploadFile, status, Request
 from django.core.files import File as DjangoFile
 from django.contrib.auth.models import Group
 
@@ -14,6 +16,8 @@ from .schemas import (
     FileSchema,
     CreateEmergencyPydanticSchema,
     CreateEmergencyResponseSchema,
+    UpdateEmergencyResponseSchema,
+    UpdateBriefPydanticSchema,
 )
 from eResponse.user.FastAPI.schemas import GroupSchema, UserSchema
 from eResponse.api_helpers import to_schema
@@ -38,6 +42,11 @@ from eResponse.response.models import Emergency, Brief
 
 CurrentUser = Depends(oauth2_scheme)
 CurrentActiveUser = Depends(get_current_user)
+
+
+async def oomph(request: Request, user=Depends(get_current_user)):
+    req = await request.body()
+    await sync_to_async(lambda: print(req))()
 
 
 async def get_emergency_files(user: Annotated[str, CurrentActiveUser], response_id: str):
@@ -87,7 +96,6 @@ async def init_response(
 
     # add brief: compulsory
     await sync_to_async(lambda: response.briefs.add(e_brief))()
-    # FileSchema.update_forward_refs()
 
     await sync_to_async(lambda: print(EmergencySchema.from_orm(response).json()))()
 
@@ -97,18 +105,54 @@ async def init_response(
 async def update_response(
         user: Annotated[str, CurrentActiveUser],
         response_id: str,
-        response: CreateEmergencyResponseSchema = Depends(),
-        files: List[UploadFile] = File(...),
+        file: Optional[UploadFile] = File(None),
+        response: UpdateEmergencyResponseSchema = Depends(),
+        brief: UpdateBriefPydanticSchema = Depends(),
+        additional_file: Optional[UploadFile] = File(None)
 
 ):
-    response = await Emergency.objects.aget(id=response_id)
-    r_schema = await to_schema(response, EmergencySchema)
+    e = await Emergency.objects.afilter(id=response_id)
 
-    r_data = response.dict(exclude_unset=True)
-    r_update = response.copy(update=r_data)
+    # update response
+    await e.aupdate(**response.dict(exclude_none=True))
+    e = await sync_to_async(e.get, thread_sensitive=True)()
 
-    return r_update
-    # await run_model_update(**{"model": Emergency, })
+    # add brief
+    # note: add new brief here* write another view for
+    # specific brief update
+    b = brief.dict(exclude_none=True)
+    if b and ("brief_title" in b and "brief_text" in b):
+        b_data = {
+            "reporter": user, "title": b['brief_title'],
+            "text": b['brief_text']}
+        bf = Brief(**b_data)
+        await sync_to_async(bf.save)()
+        if file is not None:
+            async with aiofiles.open(
+                    f"eResponse/media/responses/{file.filename}",
+                    "wb"
+            ) as upload:
+                ct = await file.read()
+                await upload.write(ct)
+            f = models.File()
+            await f.asave()
+            await sync_to_async(lambda: bf.files.add(f))()
+        if additional_file is not None:
+            async with aiofiles.open(
+                    f"eResponse/media/responses/{additional_file.filename}",
+                    "wb"
+            ) as upload:
+                ct = await additional_file.read()
+                await upload.write(ct)
+            f = models.File()
+            await f.asave()
+            await sync_to_async(lambda: bf.files.add(f))()
+
+        await sync_to_async(bf.save)()
+        await sync_to_async(lambda: e.briefs.add(bf))()
+    await sync_to_async(e.save, thread_sensitive=True)()
+
+    return await EmergencySchema.from_orm(e)
 
 
 def delete_response():
